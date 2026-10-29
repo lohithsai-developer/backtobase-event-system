@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import QRCode from 'qrcode';
-import { apiRequest } from '../../services/api';
+import { apiRequest, getApiBase } from '../../services/api';
 import {
   Users,
   UserPlus,
@@ -226,6 +226,54 @@ export const ParticipantsManagement: React.FC = () => {
     }
   };
 
+  // Download all pass links CSV
+  const handleDownloadAllLinks = () => {
+    const apiBase = getApiBase();
+    window.open(`${apiBase}/tickets/links/${eventId}/export`, '_blank');
+  };
+
+  // Toggle attendance status
+  const handleToggleAttendance = async (regId: string) => {
+    try {
+      const res = await apiRequest(`/attendance/toggle/${regId}`, { method: 'POST' });
+      if (res.success) {
+        setActionMessage({
+          type: 'success',
+          text: res.message,
+        });
+        fetchParticipants();
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to update attendance');
+    }
+  };
+
+  // Copy link for participant
+  const handleCopyLink = (p: any) => {
+    const baseUrl = window.location.origin;
+    const url = p.ticketToken ? `${baseUrl}/ticket/${p.ticketToken}` : `${baseUrl}/ticket/${p.id}`;
+    navigator.clipboard.writeText(url);
+    setActionMessage({
+      type: 'success',
+      text: `Copied ticket pass link for ${p.name}!`,
+    });
+  };
+
+  // Open direct mail client with prefilled ticket pass link
+  const handleEmailDirect = (p: any) => {
+    const baseUrl = window.location.origin;
+    const url = p.ticketToken ? `${baseUrl}/ticket/${p.ticketToken}` : `${baseUrl}/ticket/${p.id}`;
+    const subject = encodeURIComponent(`Your Entry Ticket Pass - BacktoBase Mega Event`);
+    const body = encodeURIComponent(
+      `Hello ${p.name},\n\nHere is your official digital entry pass link for the event:\n${url}\n\nPlease keep this pass handy on your mobile phone to scan at the entrance gate.\n\nBest regards,\nBacktoBase Event Team`
+    );
+    window.open(`mailto:${p.email}?subject=${subject}&body=${body}`, '_blank');
+    setActionMessage({
+      type: 'success',
+      text: `Drafted direct email pass for ${p.name} (${p.email})!`,
+    });
+  };
+
   // View unique QR modal with automatic local fallback
   const handleViewQr = async (participant: any) => {
     setViewQrLoading(true);
@@ -308,8 +356,16 @@ export const ParticipantsManagement: React.FC = () => {
 
         <div className="flex flex-wrap items-center gap-2.5">
           <button
+            type="button"
+            onClick={handleDownloadAllLinks}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider bg-[#00e5ff] hover:bg-[#33ebff] text-black transition-all shadow-md shadow-[#00e5ff]/20"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>Download All Pass Links (CSV)</span>
+          </button>
+          <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider bg-[#00e5ff] text-black hover:bg-[#33ebff] transition-all shadow-md shadow-[#00e5ff]/20"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider bg-[#171b26] text-white border border-[#272d3f] hover:border-[#00e5ff] hover:text-[#00e5ff] transition-all"
           >
             <UserPlus className="w-4 h-4" />
             <span>Add Participant</span>
@@ -430,23 +486,41 @@ export const ParticipantsManagement: React.FC = () => {
                       {p.ticketEmailStatus === 'delivered' && <Badge variant="info">Delivered</Badge>}
                     </td>
                     <td className="py-3.5 px-4">
-                      {p.attendanceStatus === 'Yes' ? (
-                        <span className="inline-flex items-center gap-1 font-bold text-emerald-400">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Yes</span>
-                        </span>
-                      ) : (
-                        <span className="text-slate-500 font-medium">No</span>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleToggleAttendance(p.id)}
+                        title="Click to toggle attendance status"
+                        className="inline-flex items-center gap-1.5 transition-all text-xs font-bold"
+                      >
+                        {p.attendanceStatus === 'Yes' || p.attendanceStatus === 'Checked In' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-rose-500/15 hover:text-rose-400 hover:border-rose-500/30">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Checked In (Undo)</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 hover:bg-emerald-500/15 hover:text-emerald-400 hover:border-emerald-500/30">
+                            <span className="w-2 h-2 rounded-full bg-slate-500" />
+                            <span>Not Checked In</span>
+                          </span>
+                        )}
+                      </button>
                     </td>
                     <td className="py-3.5 px-4 text-right">
-                      <div className="inline-flex items-center gap-2">
+                      <div className="inline-flex items-center gap-1.5">
                         <button
-                          onClick={() => handleResendTicket(p.id, p.email)}
-                          title="Resend Ticket Pass Email"
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-[#00e5ff] hover:bg-[#1f2433] transition-colors"
+                          onClick={() => handleCopyLink(p)}
+                          title="Copy Unique Ticket Link"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-[#00e5ff] hover:bg-[#1f2433] border border-transparent hover:border-[#272d3f] transition-all"
                         >
-                          <Mail className="w-4 h-4" />
+                          <Copy className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleEmailDirect(p)}
+                          title="Direct Email Pass Link to Attendee"
+                          className="px-2 py-1.5 rounded-lg text-xs font-bold bg-[#1f2433] hover:bg-[#272d3f] text-[#00e5ff] border border-[#272d3f] flex items-center gap-1 transition-all"
+                        >
+                          <Mail className="w-3.5 h-3.5" />
+                          <span>Email</span>
                         </button>
                         <button
                           onClick={() => setDeleteConfirm({ isOpen: true, participant: p })}

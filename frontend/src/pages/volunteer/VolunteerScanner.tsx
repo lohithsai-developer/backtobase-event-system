@@ -17,6 +17,10 @@ import {
   Sparkles,
   FileImage,
   Server,
+  Users,
+  Search,
+  UserCheck,
+  RotateCcw,
 } from 'lucide-react';
 import { Badge } from '../../components/Badge';
 import { BackendConfigModal } from '../../components/BackendConfigModal';
@@ -31,6 +35,9 @@ export const VolunteerScanner: React.FC = () => {
   const [configModalOpen, setConfigModalOpen] = useState(false);
 
   // Scanner state
+  const [viewMode, setViewMode] = useState<'camera' | 'roster'>('camera');
+  const [rosterSearch, setRosterSearch] = useState<string>('');
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   const [scannerStarted, setScannerStarted] = useState<boolean>(false);
   const [scanResult, setScanResult] = useState<any>(null);
   const [scanStatus, setScanStatus] = useState<
@@ -62,6 +69,24 @@ export const VolunteerScanner: React.FC = () => {
   useEffect(() => {
     fetchActiveEvent();
   }, []);
+
+  // Volunteer manual check-in toggle
+  const handleToggleAttendee = async (regId: string) => {
+    if (!regId || togglingId) return;
+    setTogglingId(regId);
+    try {
+      const res = await apiRequest(`/attendance/toggle/${regId}`, {
+        method: 'POST',
+      });
+      if (res.success) {
+        fetchActiveEvent();
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to update attendance');
+    } finally {
+      setTogglingId(null);
+    }
+  };
 
   // Process a scanned raw token or URL
   const handleScanToken = async (rawCode: string) => {
@@ -303,7 +328,7 @@ export const VolunteerScanner: React.FC = () => {
       {/* Main Scanner Body */}
       <main className="flex-1 max-w-md w-full mx-auto p-4 flex flex-col justify-between pb-24 md:pb-6">
         {/* Active Event Info Bar */}
-        <div className="bg-[#11141c] border border-[#272d3f] rounded-2xl p-4 mb-4 shadow-lg">
+        <div className="bg-[#11141c] border border-[#272d3f] rounded-2xl p-4 mb-3 shadow-lg">
           {loadingEvent ? (
             <div className="text-center py-2 text-xs text-slate-400">Loading active event...</div>
           ) : activeEvent ? (
@@ -347,6 +372,90 @@ export const VolunteerScanner: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* View Mode Toggle: Camera Scanner vs Attendee Gate List */}
+        {activeEvent && (
+          <div className="grid grid-cols-2 gap-2 p-1 bg-[#11141c] border border-[#272d3f] rounded-2xl mb-4">
+            <button
+              type="button"
+              onClick={() => setViewMode('camera')}
+              className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+                viewMode === 'camera'
+                  ? 'bg-[#00e5ff] text-black shadow-lg shadow-[#00e5ff]/20'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Camera className="w-4 h-4" />
+              <span>Camera Scan</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('roster')}
+              className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+                viewMode === 'roster'
+                  ? 'bg-[#00e5ff] text-black shadow-lg shadow-[#00e5ff]/20'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span>Gate List ({activeEvent.participants?.length || 0})</span>
+            </button>
+          </div>
+        )}
+
+        {viewMode === 'roster' && activeEvent && (
+          <div className="bg-[#11141c] border border-[#272d3f] rounded-2xl p-4 shadow-xl space-y-3">
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={rosterSearch}
+                onChange={(e) => setRosterSearch(e.target.value)}
+                placeholder="Search attendee to check in..."
+                className="w-full pl-9 pr-3 py-2 bg-[#0e1017] border border-[#272d3f] rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#00e5ff]"
+              />
+            </div>
+
+            <div className="divide-y divide-[#272d3f]/60 max-h-[380px] overflow-y-auto">
+              {(activeEvent.participants || [])
+                .filter(
+                  (p: any) =>
+                    p.name.toLowerCase().includes(rosterSearch.toLowerCase()) ||
+                    p.email.toLowerCase().includes(rosterSearch.toLowerCase())
+                )
+                .map((p: any) => (
+                  <div key={p.id} className="py-2.5 flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-bold text-white text-xs truncate">{p.name}</div>
+                      <div className="text-[11px] text-slate-400 font-mono truncate">{p.email}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleAttendee(p.id)}
+                      disabled={togglingId === p.id}
+                      className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shrink-0 ${
+                        p.isCheckedIn
+                          ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-rose-500/15 hover:text-rose-400'
+                          : 'bg-[#00e5ff] text-black hover:bg-[#33ebff]'
+                      }`}
+                    >
+                      {p.isCheckedIn ? (
+                        <>
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Checked In (Undo)</span>
+                        </>
+                      ) : (
+                        <>
+                          <UserCheck className="w-3.5 h-3.5" />
+                          <span>Mark Entry</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
 
         {/* Camera Permission / Error banner */}
         {errorMessage && (
@@ -453,7 +562,7 @@ export const VolunteerScanner: React.FC = () => {
         )}
 
         {/* Viewfinder Video Container */}
-        {!scanResult && (
+        {viewMode === 'camera' && !scanResult && (
           <div className="bg-[#11141c] border border-[#272d3f] rounded-3xl p-4 shadow-2xl flex flex-col items-center">
             <div
               id={scannerContainerId}
@@ -516,36 +625,38 @@ export const VolunteerScanner: React.FC = () => {
         )}
 
         {/* Manual Token Entry Fallback */}
-        <div className="mt-4 pt-4 border-t border-[#272d3f]">
-          <div className="text-[11px] uppercase font-bold text-slate-400 mb-2 flex items-center gap-1.5">
-            <KeyRound className="w-3.5 h-3.5 text-[#e6be6d]" />
-            <span>Manual Entry / Backup</span>
-          </div>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (manualToken.trim()) {
-                handleScanToken(manualToken.trim());
-              }
-            }}
-            className="flex gap-2"
-          >
-            <input
-              type="text"
-              value={manualToken}
-              onChange={(e) => setManualToken(e.target.value)}
-              placeholder="Paste token or ticket URL..."
-              className="flex-1 bg-[#171b26] border border-[#272d3f] rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#00e5ff]"
-            />
-            <button
-              type="submit"
-              disabled={!manualToken.trim()}
-              className="px-4 py-2 bg-[#1f2433] hover:bg-[#272d3f] text-[#00e5ff] font-bold text-xs rounded-xl border border-[#272d3f] disabled:opacity-40"
+        {viewMode === 'camera' && (
+          <div className="mt-4 pt-4 border-t border-[#272d3f]">
+            <div className="text-[11px] uppercase font-bold text-slate-400 mb-2 flex items-center gap-1.5">
+              <KeyRound className="w-3.5 h-3.5 text-[#e6be6d]" />
+              <span>Manual Entry / Backup</span>
+            </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (manualToken.trim()) {
+                  handleScanToken(manualToken.trim());
+                }
+              }}
+              className="flex gap-2"
             >
-              Verify
-            </button>
-          </form>
-        </div>
+              <input
+                type="text"
+                value={manualToken}
+                onChange={(e) => setManualToken(e.target.value)}
+                placeholder="Paste token or ticket URL..."
+                className="flex-1 bg-[#171b26] border border-[#272d3f] rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#00e5ff]"
+              />
+              <button
+                type="submit"
+                disabled={!manualToken.trim()}
+                className="px-4 py-2 bg-[#1f2433] hover:bg-[#272d3f] text-[#00e5ff] font-bold text-xs rounded-xl border border-[#272d3f] disabled:opacity-40"
+              >
+                Verify
+              </button>
+            </form>
+          </div>
+        )}
       </main>
 
       <BackendConfigModal

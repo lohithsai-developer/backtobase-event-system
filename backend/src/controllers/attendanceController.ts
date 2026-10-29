@@ -192,11 +192,18 @@ export const getEventAttendance = async (req: Request, res: Response): Promise<v
 
     const records = await EventRegistration.aggregate(pipeline);
 
-    // EXACTLY 3 visible columns per requirements: Name, Email, Checked In
+    const baseUrl = process.env.PUBLIC_APP_URL || process.env.FRONTEND_URL || 'https://backtobaseevents.vercel.app';
+
+    // Output attendance table with id and helper fields for toggling
     const attendanceTable = records.map((r) => ({
+      id: r._id,
+      registrationId: r.registrationId,
       name: r.participant.name,
       email: r.participant.email,
       checkedIn: r.attendanceStatus === 'checked_in' ? 'Yes' : 'No',
+      isCheckedIn: r.attendanceStatus === 'checked_in',
+      checkedInAt: r.checkedInAt,
+      ticketUrl: r.ticketToken ? `${baseUrl}/ticket/${r.ticketToken}` : '',
     }));
 
     res.json({
@@ -316,5 +323,64 @@ export const getScanHistory = async (req: Request, res: Response): Promise<void>
   } catch (error) {
     logger.error('Error fetching scan history:', error);
     res.status(500).json({ success: false, message: 'Failed to retrieve scan history.' });
+  }
+};
+
+/**
+ * Toggle attendance for a participant registration (Admin & Volunteer gate access)
+ */
+export const toggleAttendance = async (req: any, res: Response): Promise<void> => {
+  try {
+    const { registrationId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(registrationId)) {
+      res.status(400).json({ success: false, message: 'Invalid Registration ID.' });
+      return;
+    }
+
+    const registration = await EventRegistration.findById(registrationId)
+      .populate<{ eventId: any }>('eventId')
+      .populate<{ participantId: any }>('participantId');
+
+    if (!registration) {
+      res.status(404).json({ success: false, message: 'Registration not found.' });
+      return;
+    }
+
+    const willCheckIn = registration.attendanceStatus !== 'checked_in';
+    const now = new Date();
+    const volunteerId = req.user?.username || 'Staff/Volunteer';
+
+    registration.attendanceStatus = willCheckIn ? 'checked_in' : 'not_checked_in';
+    registration.checkedInAt = willCheckIn ? now : null;
+    registration.checkedInBy = willCheckIn ? volunteerId : '';
+    await registration.save();
+
+    // Recalculate event attendance stats
+    const totalAttended = await EventRegistration.countDocuments({
+      eventId: registration.eventId._id,
+      attendanceStatus: 'checked_in',
+    });
+    await Event.findByIdAndUpdate(registration.eventId._id, { totalAttended });
+
+    const participantName = (registration.participantId as any)?.name || 'Attendee';
+
+    logger.info(
+      `Attendance toggled to ${registration.attendanceStatus} for ${participantName} by ${volunteerId}`
+    );
+
+    res.json({
+      success: true,
+      message: willCheckIn
+        ? `Attendance marked as Checked In for ${participantName}`
+        : `Attendance marked as Not Checked In for ${participantName}`,
+      registrationId: registration._id,
+      newStatus: registration.attendanceStatus,
+      isCheckedIn: willCheckIn,
+      checkedIn: willCheckIn ? 'Yes' : 'No',
+      checkedInAt: registration.checkedInAt,
+    });
+  } catch (error) {
+    logger.error('Error toggling attendance:', error);
+    res.status(500).json({ success: false, message: 'Failed to update attendance status.' });
   }
 };

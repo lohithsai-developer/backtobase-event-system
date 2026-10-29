@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { apiRequest } from '../../services/api';
+import { apiRequest, getApiBase } from '../../services/api';
 import {
   ClipboardCheck,
   Search,
@@ -9,6 +9,12 @@ import {
   ArrowLeft,
   RefreshCw,
   History,
+  CheckCircle2,
+  XCircle,
+  Copy,
+  Check,
+  ExternalLink,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 export const AttendanceTable: React.FC = () => {
@@ -21,6 +27,8 @@ export const AttendanceTable: React.FC = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isExporting, setIsExporting] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const fetchAttendance = async () => {
     try {
@@ -41,6 +49,45 @@ export const AttendanceTable: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleToggleAttendance = async (regId: string) => {
+    if (!regId || togglingId) return;
+    setTogglingId(regId);
+    try {
+      const res = await apiRequest(`/attendance/toggle/${regId}`, {
+        method: 'POST',
+      });
+      if (res.success) {
+        setRecords((prev) =>
+          prev.map((r) =>
+            r.id === regId
+              ? {
+                  ...r,
+                  checkedIn: res.checkedIn,
+                  isCheckedIn: res.isCheckedIn,
+                }
+              : r
+          )
+        );
+      }
+    } catch (err) {
+      console.error('Failed to toggle attendance:', err);
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
+  const handleCopyLink = (ticketUrl: string, id: string) => {
+    if (!ticketUrl) return;
+    navigator.clipboard.writeText(ticketUrl);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleDownloadAllLinks = () => {
+    const apiBase = getApiBase();
+    window.open(`${apiBase}/tickets/links/${eventId}/export`, '_blank');
   };
 
   useEffect(() => {
@@ -109,12 +156,19 @@ export const AttendanceTable: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            onClick={handleDownloadAllLinks}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider bg-[#00e5ff] hover:bg-[#33ebff] text-black transition-all shadow-md shadow-[#00e5ff]/20"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>Download All Pass Links (CSV)</span>
+          </button>
           <Link
             to={`/admin/events/${eventId}/history`}
             className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider bg-[#171b26] text-slate-300 border border-[#272d3f] hover:text-white hover:border-[#00e5ff] transition-all"
           >
             <History className="w-4 h-4 text-[#00e5ff]" />
-            <span>Audit Trail &amp; Timestamps</span>
+            <span>Audit Trail</span>
           </Link>
           <button
             onClick={() => handleExport('csv')}
@@ -123,14 +177,6 @@ export const AttendanceTable: React.FC = () => {
           >
             <Download className="w-4 h-4" />
             <span>Export CSV</span>
-          </button>
-          <button
-            onClick={() => handleExport('xlsx')}
-            disabled={isExporting}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider bg-[#171b26] text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all disabled:opacity-50"
-          >
-            <Download className="w-4 h-4" />
-            <span>Export Excel</span>
           </button>
         </div>
       </div>
@@ -207,14 +253,48 @@ export const AttendanceTable: React.FC = () => {
                     <td className="py-4 px-6 font-bold text-white text-sm">{r.name}</td>
                     <td className="py-4 px-6 text-slate-400 font-mono text-xs">{r.email}</td>
                     <td className="py-4 px-6">
-                      {r.checkedIn === 'Yes' ? (
-                        <span className="inline-flex items-center gap-1.5 font-black text-emerald-400 text-sm">
-                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                          <span>Yes</span>
-                        </span>
-                      ) : (
-                        <span className="font-semibold text-slate-500 text-sm">No</span>
-                      )}
+                      <div className="flex items-center justify-between gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleAttendance(r.id)}
+                          disabled={togglingId === r.id}
+                          title="Click to toggle attendance status"
+                          className="inline-flex items-center gap-1.5 transition-all text-xs font-bold disabled:opacity-50"
+                        >
+                          {r.checkedIn === 'Yes' ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-rose-500/15 hover:text-rose-400 hover:border-rose-500/30 transition-all">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Checked In (Click to Undo)</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 hover:bg-emerald-500/15 hover:text-emerald-400 hover:border-emerald-500/30 transition-all">
+                              <XCircle className="w-3.5 h-3.5" />
+                              <span>Not Checked In (Click to Check In)</span>
+                            </span>
+                          )}
+                        </button>
+
+                        {r.ticketUrl && (
+                          <button
+                            type="button"
+                            onClick={() => handleCopyLink(r.ticketUrl, r.id)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#171b26] border border-[#272d3f] hover:border-[#00e5ff] text-slate-400 hover:text-[#00e5ff] transition-all text-[11px]"
+                            title="Copy Direct Pass URL"
+                          >
+                            {copiedId === r.id ? (
+                              <>
+                                <Check className="w-3 h-3 text-emerald-400" />
+                                <span className="text-emerald-400 font-bold">Copied!</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3 h-3" />
+                                <span>Copy Link</span>
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))

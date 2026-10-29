@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import QRCode from 'qrcode';
-import { apiRequest } from '../../services/api';
+import { apiRequest, getApiBase } from '../../services/api';
 import {
   Ticket,
   Mail,
@@ -17,6 +17,8 @@ import {
   Eye,
   Download,
   Copy,
+  FileSpreadsheet,
+  Check,
 } from 'lucide-react';
 import { Badge } from '../../components/Badge';
 import { Modal } from '../../components/Modal';
@@ -104,6 +106,50 @@ export const TicketsManagement: React.FC = () => {
         text: 'This feature will be available soon! Email dispatch queued for ' + email,
       });
     }
+  };
+
+  // Download all pass links CSV
+  const handleDownloadAllLinks = () => {
+    const apiBase = getApiBase();
+    window.open(`${apiBase}/tickets/links/${eventId}/export`, '_blank');
+  };
+
+  // Toggle attendance status
+  const handleToggleAttendance = async (regId: string) => {
+    try {
+      const res = await apiRequest(`/attendance/toggle/${regId}`, { method: 'POST' });
+      if (res.success) {
+        setActionMessage({
+          type: 'success',
+          text: res.message,
+        });
+        fetchTickets();
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to update attendance');
+    }
+  };
+
+  // Copy pass link for individual participant
+  const handleCopyLink = (p: any) => {
+    const baseUrl = window.location.origin;
+    const url = p.ticketToken ? `${baseUrl}/ticket/${p.ticketToken}` : `${baseUrl}/ticket/${p.id}`;
+    navigator.clipboard.writeText(url);
+    setActionMessage({
+      type: 'success',
+      text: `Copied ticket pass link for ${p.name}!`,
+    });
+  };
+
+  // Open direct email draft
+  const handleEmailDirect = (p: any) => {
+    const baseUrl = window.location.origin;
+    const link = p.ticketToken ? `${baseUrl}/ticket/${p.ticketToken}` : `${baseUrl}/ticket/${p.id}`;
+    const subject = encodeURIComponent(`Your BacktoBase Mega Event Ticket Pass`);
+    const body = encodeURIComponent(
+      `Hello ${p.name},\n\nHere is your official digital entry ticket pass for the BacktoBase Mega Event:\n${link}\n\nPlease present the QR code on your phone at the check-in gate for verified admission.\n\nBest regards,\nBacktoBase Event Team`
+    );
+    window.open(`mailto:${p.email}?subject=${subject}&body=${body}`, '_blank');
   };
 
   // View unique QR modal with automatic local fallback
@@ -212,16 +258,27 @@ export const TicketsManagement: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setBulkSummary(null);
-            setShowBulkModal(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider bg-[#e6be6d] text-black hover:bg-[#eed08c] transition-all shadow-md shadow-[#e6be6d]/20 shrink-0 self-start sm:self-auto"
-        >
-          <Send className="w-4 h-4" />
-          <span>Bulk Dispatch Passes</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            type="button"
+            onClick={handleDownloadAllLinks}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider bg-[#00e5ff] hover:bg-[#33ebff] text-black transition-all shadow-md shadow-[#00e5ff]/20 shrink-0 self-start sm:self-auto"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>Download All Pass Links (CSV)</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setBulkSummary(null);
+              setShowBulkModal(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider bg-[#e6be6d] text-black hover:bg-[#eed08c] transition-all shadow-md shadow-[#e6be6d]/20 shrink-0 self-start sm:self-auto"
+          >
+            <Send className="w-4 h-4" />
+            <span>Bulk Dispatch Passes</span>
+          </button>
+        </div>
       </div>
 
       {/* Action Notification */}
@@ -261,8 +318,8 @@ export const TicketsManagement: React.FC = () => {
                 <th className="py-3.5 px-4">Pass ID</th>
                 <th className="py-3.5 px-4">Participant</th>
                 <th className="py-3.5 px-4">Email Address</th>
-                <th className="py-3.5 px-4">Version</th>
-                <th className="py-3.5 px-4">Delivery Status</th>
+                <th className="py-3.5 px-4">Attendance Status</th>
+                <th className="py-3.5 px-4">Email Status</th>
                 <th className="py-3.5 px-4 text-right">Actions</th>
               </tr>
             </thead>
@@ -301,7 +358,25 @@ export const TicketsManagement: React.FC = () => {
                         </button>
                       </div>
                     </td>
-                    <td className="py-3.5 px-4 text-slate-500">v{p.ticketVersion || 1}</td>
+                    <td className="py-3.5 px-4">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleAttendance(p.id)}
+                        title="Click to toggle attendance status"
+                        className="inline-flex items-center gap-1.5 transition-all text-xs font-bold"
+                      >
+                        {p.attendanceStatus === 'Checked In' || p.attendanceStatus === 'Yes' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-rose-500/15 hover:text-rose-400 hover:border-rose-500/30">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Checked In (Undo)</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 hover:bg-emerald-500/15 hover:text-emerald-400 hover:border-emerald-500/30">
+                            <span>Not Checked In</span>
+                          </span>
+                        )}
+                      </button>
+                    </td>
                     <td className="py-3.5 px-4">
                       {p.ticketEmailStatus === 'sent' && <Badge variant="success">Sent</Badge>}
                       {p.ticketEmailStatus === 'pending' && <Badge variant="warning">Pending</Badge>}
@@ -309,21 +384,28 @@ export const TicketsManagement: React.FC = () => {
                       {p.ticketEmailStatus === 'delivered' && <Badge variant="info">Delivered</Badge>}
                     </td>
                     <td className="py-3.5 px-4 text-right">
-                      <div className="inline-flex items-center gap-2">
+                      <div className="inline-flex items-center gap-1.5">
                         <button
-                          onClick={() => handleSendTicket(p.id, p.email)}
-                          className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-[#1f2433] hover:bg-[#272d3f] text-[#00e5ff] flex items-center gap-1.5 transition-all"
+                          onClick={() => handleCopyLink(p)}
+                          title="Copy Pass URL to Clipboard"
+                          className="p-1.5 rounded-lg text-xs font-bold bg-[#1f2433] hover:bg-[#272d3f] text-slate-300 hover:text-[#00e5ff] border border-[#272d3f] transition-all"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleEmailDirect(p)}
+                          title="Email Ticket Link to Attendee"
+                          className="px-2 py-1.5 rounded-lg text-xs font-bold bg-[#1f2433] hover:bg-[#272d3f] text-[#00e5ff] border border-[#272d3f] flex items-center gap-1 transition-all"
                         >
                           <Mail className="w-3.5 h-3.5" />
-                          <span>Send</span>
+                          <span>Email</span>
                         </button>
                         <button
                           onClick={() => setReissueConfirm({ isOpen: true, participant: p })}
                           title="Revoke and Reissue Ticket"
-                          className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 flex items-center gap-1.5 transition-all"
+                          className="p-1.5 rounded-lg text-xs font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 transition-all"
                         >
                           <RefreshCw className="w-3.5 h-3.5" />
-                          <span>Reissue</span>
                         </button>
                       </div>
                     </td>

@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import QRCode from 'qrcode';
+import * as XLSX from 'xlsx';
 import { EventRegistration } from '../models/EventRegistration';
 import { Event, IEvent } from '../models/Event';
 import { Participant, IParticipant } from '../models/Participant';
@@ -293,5 +294,106 @@ export const getRegistrationQr = async (req: Request, res: Response): Promise<vo
   } catch (error) {
     logger.error('Error fetching registration QR:', error);
     res.status(500).json({ success: false, message: 'Failed to retrieve ticket QR.' });
+  }
+};
+
+/**
+ * Get all ticket links for an event
+ */
+export const getAllTicketLinks = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { eventId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(eventId)) {
+      res.status(400).json({ success: false, message: 'Invalid Event ID.' });
+      return;
+    }
+
+    const registrations = await EventRegistration.find({ eventId })
+      .populate<{ participantId: any }>('participantId')
+      .populate<{ eventId: any }>('eventId')
+      .sort({ 'participantId.name': 1 });
+
+    const baseUrl = ENV.PUBLIC_APP_URL || ENV.FRONTEND_URL || 'https://backtobaseevents.vercel.app';
+
+    const links = await Promise.all(
+      registrations.map(async (r: any) => {
+        let token = r.ticketToken;
+        if (!token) {
+          token = generateSecureToken(32);
+          r.ticketToken = token;
+          r.ticketTokenHash = hashToken(token);
+          await r.save();
+        }
+        return {
+          id: r._id,
+          registrationId: r.registrationId,
+          name: r.participantId ? r.participantId.name : 'Attendee',
+          email: r.participantId ? r.participantId.email : '',
+          token,
+          ticketUrl: `${baseUrl}/ticket/${token}`,
+          attendanceStatus: r.attendanceStatus === 'checked_in' ? 'Checked In' : 'Not Checked In',
+          isCheckedIn: r.attendanceStatus === 'checked_in',
+        };
+      })
+    );
+
+    res.json({
+      success: true,
+      total: links.length,
+      links,
+    });
+  } catch (error) {
+    logger.error('Error fetching ticket links:', error);
+    res.status(500).json({ success: false, message: 'Failed to retrieve ticket links.' });
+  }
+};
+
+/**
+ * Export all pass links as a CSV file ready for download
+ */
+export const exportTicketLinks = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { eventId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(eventId)) {
+      res.status(400).json({ success: false, message: 'Invalid Event ID.' });
+      return;
+    }
+
+    const registrations = await EventRegistration.find({ eventId })
+      .populate<{ participantId: any }>('participantId')
+      .populate<{ eventId: any }>('eventId');
+
+    const baseUrl = ENV.PUBLIC_APP_URL || ENV.FRONTEND_URL || 'https://backtobaseevents.vercel.app';
+
+    const rows = await Promise.all(
+      registrations.map(async (r: any) => {
+        let token = r.ticketToken;
+        if (!token) {
+          token = generateSecureToken(32);
+          r.ticketToken = token;
+          r.ticketTokenHash = hashToken(token);
+          await r.save();
+        }
+        return {
+          'Attendee Name': r.participantId ? r.participantId.name : 'Attendee',
+          'Email Address': r.participantId ? r.participantId.email : '',
+          'Pass ID': r.registrationId,
+          'Unique Ticket Pass Link': `${baseUrl}/ticket/${token}`,
+          'Attendance Status': r.attendanceStatus === 'checked_in' ? 'Checked In' : 'Not Checked In',
+        };
+      })
+    );
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Pass Links');
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'csv' });
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=BacktoBase_Pass_Links_${Date.now()}.csv`);
+    res.send(buffer);
+  } catch (error) {
+    logger.error('Error exporting ticket links:', error);
+    res.status(500).json({ success: false, message: 'Failed to export ticket links.' });
   }
 };

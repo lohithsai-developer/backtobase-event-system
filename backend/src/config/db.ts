@@ -4,18 +4,15 @@ import { logger } from '../utils/logger';
 import { User } from '../models/User';
 import { hashPassword } from '../utils/hash';
 
-let mongodInstance: any = null;
+let isConnected = false;
 
 export const connectDB = async (): Promise<void> => {
   try {
     let uri = ENV.MONGODB_URI;
 
     if (!uri) {
-      logger.info('No MONGODB_URI provided. Initializing in-memory MongoDB instance for development/testing...');
-      const { MongoMemoryServer } = await import('mongodb-memory-server');
-      mongodInstance = await MongoMemoryServer.create();
-      uri = mongodInstance.getUri();
-      logger.info(`In-memory MongoDB started at: ${uri}`);
+      uri = 'mongodb://127.0.0.1:27017/backtobase';
+      logger.warn('No MONGODB_URI provided in environment. Falling back to local MongoDB uri: mongodb://127.0.0.1:27017/backtobase');
     } else {
       logger.info('Connecting to external MongoDB (Atlas/Local)...');
     }
@@ -24,6 +21,7 @@ export const connectDB = async (): Promise<void> => {
       autoIndex: true,
     });
 
+    isConnected = true;
     logger.info('MongoDB connected successfully.');
     await initDefaultAccounts();
   } catch (error) {
@@ -35,10 +33,7 @@ export const connectDB = async (): Promise<void> => {
 export const disconnectDB = async (): Promise<void> => {
   try {
     await mongoose.disconnect();
-    if (mongodInstance) {
-      await mongodInstance.stop();
-      mongodInstance = null;
-    }
+    isConnected = false;
     logger.info('MongoDB disconnected.');
   } catch (error) {
     logger.error('Error disconnecting MongoDB:', error);

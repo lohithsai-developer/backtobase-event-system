@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # BacktoBase Mega Event — QR Ticketing & Attendance Management System
 
 ![BacktoBase Logo](frontend/public/backtobase-logo.png)
@@ -244,3 +245,6 @@ All 22 functional requirements have been verified:
 - [x] Automated live statistics (Total Registrations, Total Attended, Remaining, Turnout %).
 - [x] Public live portal displaying active event without leaking attendee personal data.
 - [x] Dedicated security scan history audit trail.
+=======
+# backtobase-event-system
+>>>>>>> 71d4766dd33e23034156a0dc678945107edf51b2

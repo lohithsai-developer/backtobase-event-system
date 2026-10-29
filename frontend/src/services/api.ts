@@ -1,13 +1,26 @@
+// Direct production backend URL on Render
+const DEFAULT_CLOUD_API = 'https://backtobase-event-system.onrender.com/api';
+
 export const getApiBase = (): string => {
-  const custom = localStorage.getItem('btb_backend_url');
-  if (custom && custom.trim()) {
-    return custom.trim().replace(/\/+$/, '');
+  // If running on local development Vite server (localhost:5173), proxy through /api
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return '/api';
   }
+
+  // 1. Vite environment variable if explicitly configured
   const envUrl = import.meta.env.VITE_API_BASE_URL;
   if (envUrl && envUrl.trim()) {
     return envUrl.trim().replace(/\/+$/, '');
   }
-  return '/api';
+
+  // 2. Custom override from localStorage (if any)
+  const custom = typeof window !== 'undefined' ? localStorage.getItem('btb_backend_url') : null;
+  if (custom && custom.trim()) {
+    return custom.trim().replace(/\/+$/, '');
+  }
+
+  // 3. Directly connect to live Render backend by default on all mobile & web deployments
+  return DEFAULT_CLOUD_API;
 };
 
 export const setCustomApiBase = (url: string): void => {

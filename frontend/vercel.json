@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/api/:match*",
+      "destination": "https://backtobase-event-system.onrender.com/api/:match*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/"
     }

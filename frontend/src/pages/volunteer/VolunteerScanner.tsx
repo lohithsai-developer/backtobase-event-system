@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '../../components/Badge';
 import { BackendConfigModal } from '../../components/BackendConfigModal';
+import { BottomNav } from '../../components/BottomNav';
 
 export const VolunteerScanner: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuth();
@@ -277,7 +278,7 @@ export const VolunteerScanner: React.FC = () => {
       </header>
 
       {/* Main Scanner Body */}
-      <main className="flex-1 max-w-md w-full mx-auto p-4 flex flex-col justify-between">
+      <main className="flex-1 max-w-md w-full mx-auto p-4 flex flex-col justify-between pb-24 md:pb-6">
         {/* Active Event Info Bar */}
         <div className="bg-[#11141c] border border-[#272d3f] rounded-2xl p-4 mb-4 shadow-lg">
           {loadingEvent ? (
@@ -529,6 +530,8 @@ export const VolunteerScanner: React.FC = () => {
         onClose={() => setConfigModalOpen(false)}
         onSaved={fetchActiveEvent}
       />
+
+      <BottomNav />
     </div>
   );
 };

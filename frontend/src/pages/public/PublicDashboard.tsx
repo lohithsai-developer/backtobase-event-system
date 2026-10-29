@@ -28,48 +28,49 @@ export const PublicDashboard: React.FC = () => {
   }, []);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-12">
       {/* Hero Section */}
-      <div className="relative rounded-3xl bg-gradient-to-br from-[#11141c] via-[#171b26] to-[#0d0f15] border border-[#272d3f] p-8 sm:p-12 overflow-hidden shadow-2xl mb-12">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-[#00e5ff]/5 rounded-full blur-3xl pointer-events-none"></div>
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-[#e6be6d]/5 rounded-full blur-3xl pointer-events-none"></div>
+      <div className="relative rounded-2xl sm:rounded-3xl bg-gradient-to-br from-[#11141c] via-[#171b26] to-[#0d0f15] border border-[#272d3f] p-6 sm:p-10 overflow-hidden shadow-2xl mb-8">
+        <div className="absolute top-0 right-0 w-72 sm:w-96 h-72 sm:h-96 bg-[#00e5ff]/5 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 w-72 sm:w-96 h-72 sm:h-96 bg-[#e6be6d]/5 rounded-full blur-3xl pointer-events-none"></div>
 
-        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="space-y-4 text-center md:text-left max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#00e5ff]/10 border border-[#00e5ff]/20 text-[#00e5ff] text-xs font-bold uppercase tracking-widest">
-              <span>BacktoBase Live Portal</span>
+        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="space-y-3 text-center md:text-left max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#00e5ff]/10 border border-[#00e5ff]/20 text-[#00e5ff] text-[11px] sm:text-xs font-bold uppercase tracking-widest">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#00e5ff] animate-ping" />
+              <span>Official Mega Event Portal</span>
             </div>
-            <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
-              Mega Event Ticketing &amp; Attendance Management
+            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-tight">
+              BacktoBase Mega Event
             </h1>
-            <p className="text-slate-400 text-base sm:text-lg leading-relaxed">
-              Official verification portal for BacktoBase events. Experience seamless QR ticket validation, real-time check-ins, and institutional-grade event tracking.
+            <p className="text-slate-400 text-sm sm:text-base leading-relaxed">
+              Real-time QR ticket verification, gate access control, and live attendance metrics powered by high-speed cloud sync.
             </p>
-            <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 pt-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center md:justify-start gap-3 pt-2">
               <Link
                 to="/volunteer/scanner"
-                className="flex items-center gap-2.5 px-6 py-3.5 rounded-xl font-bold text-sm bg-gradient-to-r from-[#00e5ff] to-[#00b4d8] text-black hover:opacity-95 shadow-lg shadow-[#00e5ff]/25 transition-all"
+                className="flex items-center justify-center gap-2.5 px-5 py-3.5 rounded-xl font-bold text-sm bg-gradient-to-r from-[#00e5ff] to-[#00b4d8] text-black hover:opacity-95 shadow-lg shadow-[#00e5ff]/25 active:scale-95 transition-all"
               >
-                <QrCode className="w-5 h-5" />
-                <span>Launch Volunteer Scanner</span>
+                <QrCode className="w-5 h-5 shrink-0" />
+                <span>Launch QR Scanner</span>
               </Link>
               <Link
                 to="/admin/login"
-                className="flex items-center gap-2.5 px-6 py-3.5 rounded-xl font-bold text-sm bg-[#171b26] text-white border border-[#272d3f] hover:border-[#e6be6d] hover:text-[#e6be6d] transition-all"
+                className="flex items-center justify-center gap-2.5 px-5 py-3.5 rounded-xl font-bold text-sm bg-[#171b26] text-white border border-[#272d3f] hover:border-[#e6be6d] hover:text-[#e6be6d] active:scale-95 transition-all"
               >
-                <ShieldCheck className="w-5 h-5" />
+                <ShieldCheck className="w-5 h-5 shrink-0 text-[#e6be6d]" />
                 <span>Admin Login</span>
               </Link>
             </div>
           </div>
 
-          <div className="shrink-0 flex flex-col items-center p-6 bg-[#11141c]/80 rounded-2xl border border-[#272d3f] shadow-inner text-center">
+          <div className="shrink-0 flex flex-col items-center p-4 sm:p-6 bg-[#11141c]/90 rounded-2xl border border-[#272d3f] shadow-inner text-center">
             <img
               src="/backtobase-logo.png"
               alt="BacktoBase Mega Event"
-              className="w-48 h-auto object-contain drop-shadow-md"
+              className="w-32 sm:w-44 h-auto object-contain drop-shadow-md"
             />
-            <div className="mt-3 text-xs font-bold tracking-widest text-slate-400 uppercase">
+            <div className="mt-2 text-[10px] font-bold tracking-widest text-[#00e5ff] uppercase">
               LEGENDS UPGRADE
             </div>
           </div>
@@ -80,43 +81,43 @@ export const PublicDashboard: React.FC = () => {
       {loading ? (
         <div className="py-16 text-center text-slate-400">
           <div className="w-10 h-10 border-4 border-[#00e5ff] border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-          <p className="font-semibold text-sm">Fetching active mega event information...</p>
+          <p className="font-semibold text-sm">Synchronizing live event data...</p>
         </div>
       ) : activeEvent ? (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <h2 className="text-2xl font-bold text-white tracking-tight">Currently Active Mega Event</h2>
-              <Badge variant="active">LIVE NOW</Badge>
-            </div>
-            <div className="text-xs text-slate-400 hidden sm:block">
-              Event data synchronized with server
+            <div className="flex items-center gap-2.5">
+              <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">Active Live Event</h2>
+              <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-xs font-bold uppercase tracking-wider">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                LIVE
+              </span>
             </div>
           </div>
 
           {/* Active Event Card */}
-          <div className="bg-[#11141c] border border-[#272d3f] rounded-2xl p-6 sm:p-8 shadow-xl">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-[#272d3f]">
-              <div className="space-y-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#e6be6d]">
+          <div className="bg-[#11141c] border border-[#272d3f] rounded-2xl p-5 sm:p-7 shadow-xl">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-5 border-b border-[#272d3f]">
+              <div className="space-y-1.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#e6be6d]">
                   Official Event Program
                 </span>
-                <h3 className="text-2xl sm:text-3xl font-extrabold text-white">{activeEvent.name}</h3>
-                <p className="text-slate-400 text-sm max-w-3xl leading-relaxed">
+                <h3 className="text-xl sm:text-3xl font-extrabold text-white">{activeEvent.name}</h3>
+                <p className="text-slate-400 text-xs sm:text-sm max-w-3xl leading-relaxed">
                   {activeEvent.description}
                 </p>
               </div>
-              <div className="shrink-0 bg-[#171b26] border border-[#272d3f] rounded-xl px-5 py-4 flex items-center gap-3">
-                <Calendar className="w-6 h-6 text-[#00e5ff]" />
+              <div className="shrink-0 bg-[#171b26] border border-[#272d3f] rounded-xl px-4 py-3 flex items-center gap-3">
+                <Calendar className="w-5 h-5 text-[#00e5ff]" />
                 <div>
-                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    Scheduled Date
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Event Date
                   </div>
-                  <div className="text-base font-bold text-white">
+                  <div className="text-sm sm:text-base font-bold text-white">
                     {new Date(activeEvent.date).toLocaleDateString('en-US', {
-                      weekday: 'long',
+                      weekday: 'short',
                       year: 'numeric',
-                      month: 'long',
+                      month: 'short',
                       day: 'numeric',
                     })}
                   </div>
@@ -124,34 +125,34 @@ export const PublicDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Statistics */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+            {/* Statistics in Mobile 2x2 Grid */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-5">
               <StatCard
-                label="Total Registrations"
+                label="Registered"
                 value={activeEvent.totalParticipants}
-                subtext="Confirmed passes"
-                icon={<Users className="w-5 h-5" />}
+                subtext="Total passes"
+                icon={<Users className="w-4 h-4 sm:w-5 sm:h-5" />}
                 accentColor="turquoise"
               />
               <StatCard
-                label="Total Attended"
+                label="Attended"
                 value={activeEvent.totalAttended}
-                subtext="Verified check-ins"
-                icon={<CheckCircle2 className="w-5 h-5" />}
+                subtext="Checked in"
+                icon={<CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />}
                 accentColor="green"
               />
               <StatCard
-                label="Remaining In Queue"
+                label="Pending"
                 value={activeEvent.remainingParticipants}
-                subtext="Pending gate entry"
-                icon={<Users className="w-5 h-5" />}
+                subtext="Gate queue"
+                icon={<Users className="w-4 h-4 sm:w-5 sm:h-5" />}
                 accentColor="amber"
               />
               <StatCard
-                label="Attendance Rate"
+                label="Turnout"
                 value={`${activeEvent.attendancePercentage}%`}
-                subtext="Turnout ratio"
-                icon={<CheckCircle2 className="w-5 h-5" />}
+                subtext="Attendance"
+                icon={<CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />}
                 accentColor="gold"
               />
             </div>
@@ -159,19 +160,19 @@ export const PublicDashboard: React.FC = () => {
         </div>
       ) : (
         /* Professional Empty State */
-        <div className="bg-[#11141c] border border-[#272d3f] rounded-2xl p-12 text-center max-w-2xl mx-auto shadow-xl">
-          <div className="w-16 h-16 rounded-full bg-[#171b26] border border-[#272d3f] flex items-center justify-center mx-auto mb-4 text-slate-500">
-            <Calendar className="w-8 h-8 text-[#e6be6d]" />
+        <div className="bg-[#11141c] border border-[#272d3f] rounded-2xl p-8 sm:p-12 text-center max-w-xl mx-auto shadow-xl">
+          <div className="w-14 h-14 rounded-full bg-[#171b26] border border-[#272d3f] flex items-center justify-center mx-auto mb-4 text-[#e6be6d]">
+            <Calendar className="w-7 h-7" />
           </div>
-          <h3 className="text-xl font-bold text-white mb-2">No active event at the moment</h3>
-          <p className="text-slate-400 text-sm mb-6 max-w-md mx-auto leading-relaxed">
-            The event administrator has not activated a mega event schedule yet. Once an event is activated in the admin console, live stats and scanner verification will activate automatically.
+          <h3 className="text-lg sm:text-xl font-bold text-white mb-2">No active event at the moment</h3>
+          <p className="text-slate-400 text-xs sm:text-sm mb-6 max-w-md mx-auto leading-relaxed">
+            Please log into the Admin Console to activate your event. Once activated, it immediately goes live across all mobile phones.
           </p>
           <Link
             to="/admin/login"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm bg-[#e6be6d] text-black hover:bg-[#eed08c] transition-all"
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-xs sm:text-sm bg-[#e6be6d] text-black hover:bg-[#eed08c] active:scale-95 transition-all shadow-lg shadow-[#e6be6d]/20"
           >
-            <span>Open Admin Dashboard to Activate Event</span>
+            <span>Sign In to Admin Console</span>
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>

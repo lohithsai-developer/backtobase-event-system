@@ -14,13 +14,13 @@ export const Navbar: React.FC = () => {
 
   return (
     <header className="bg-[#11141c]/90 backdrop-blur-md border-b border-[#272d3f] sticky top-0 z-40">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between">
         {/* Brand Logo and Title */}
-        <Link to="/" className="flex items-center gap-4 group">
+        <Link to="/" className="flex items-center gap-3 sm:gap-4 group">
           <img
             src="/backtobase-logo.png"
             alt="BacktoBase Mega Event Logo"
-            className="h-14 w-auto object-contain transition-transform group-hover:scale-105 duration-200"
+            className="h-10 sm:h-14 w-auto object-contain transition-transform group-hover:scale-105 duration-200"
           />
           <div className="hidden sm:block">
             <div className="text-xs font-bold uppercase tracking-widest text-[#e6be6d]">

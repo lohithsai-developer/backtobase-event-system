@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { apiRequest, getApiBase, setCustomApiBase } from '../../services/api';
-import { ShieldCheck, Lock, User, AlertCircle, ArrowLeft, Server, Check } from 'lucide-react';
+import { ShieldCheck, Lock, User, AlertCircle, ArrowLeft, Server, Check, Eye, EyeOff } from 'lucide-react';
+import { BottomNav } from '../../components/BottomNav';
 
 export const AdminLogin: React.FC = () => {
   const [username, setUsername] = useState('-admin');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [backendUrl, setBackendUrl] = useState(getApiBase());
@@ -127,13 +129,20 @@ export const AdminLogin: React.FC = () => {
                 <Lock className="w-4 h-4" />
               </div>
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••••••"
-                className="w-full pl-10 pr-4 py-3 bg-[#171b26] border border-[#272d3f] rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:border-[#e6be6d] focus:ring-1 focus:ring-[#e6be6d] transition-all"
+                className="w-full pl-10 pr-10 py-3 bg-[#171b26] border border-[#272d3f] rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:border-[#e6be6d] focus:ring-1 focus:ring-[#e6be6d] transition-all"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-white"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
           </div>
 
@@ -209,6 +218,8 @@ export const AdminLogin: React.FC = () => {
           </p>
         </div>
       </div>
+
+      <BottomNav />
     </div>
   );
 };

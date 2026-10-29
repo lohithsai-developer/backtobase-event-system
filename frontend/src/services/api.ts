@@ -3,24 +3,39 @@ const DEFAULT_CLOUD_API = 'https://backtobase-event-system.onrender.com/api';
 
 export const getApiBase = (): string => {
   // If running on local development Vite server (localhost:5173), proxy through /api
-  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+  if (
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  ) {
     return '/api';
   }
+
+  let base = DEFAULT_CLOUD_API;
 
   // 1. Vite environment variable if explicitly configured
   const envUrl = import.meta.env.VITE_API_BASE_URL;
   if (envUrl && envUrl.trim()) {
-    return envUrl.trim().replace(/\/+$/, '');
+    base = envUrl.trim();
+  } else {
+    // 2. Custom override from localStorage (if any)
+    const custom = typeof window !== 'undefined' ? localStorage.getItem('btb_backend_url') : null;
+    if (custom && custom.trim()) {
+      base = custom.trim();
+    }
   }
 
-  // 2. Custom override from localStorage (if any)
-  const custom = typeof window !== 'undefined' ? localStorage.getItem('btb_backend_url') : null;
-  if (custom && custom.trim()) {
-    return custom.trim().replace(/\/+$/, '');
+  base = base.replace(/\/+$/, '');
+
+  // Auto-correct: ensure backend URL always has /api prefix for endpoints
+  if (base.startsWith('http') && !base.endsWith('/api') && !base.includes('/api/')) {
+    base = `${base}/api`;
+    // Update stored URL if it was missing /api
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('btb_backend_url', base);
+    }
   }
 
-  // 3. Directly connect to live Render backend by default on all mobile & web deployments
-  return DEFAULT_CLOUD_API;
+  return base;
 };
 
 export const setCustomApiBase = (url: string): void => {

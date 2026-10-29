@@ -52,10 +52,10 @@ export const createApp = (): Application => {
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
   // General rate limit for API endpoints
-  app.use('/api', apiLimiter);
+  app.use(['/api', '/auth', '/events', '/participants', '/tickets', '/attendance', '/public'], apiLimiter);
 
   // Health check endpoint for Render / Docker
-  app.get('/api/health', (req: Request, res: Response) => {
+  app.get(['/api/health', '/health'], (req: Request, res: Response) => {
     res.json({
       status: 'healthy',
       timestamp: new Date().toISOString(),
@@ -64,13 +64,13 @@ export const createApp = (): Application => {
     });
   });
 
-  // API Routes
-  app.use('/api/auth', authRoutes);
-  app.use('/api/events', eventRoutes);
-  app.use('/api/participants', participantRoutes);
-  app.use('/api/tickets', ticketRoutes);
-  app.use('/api/attendance', attendanceRoutes);
-  app.use('/api/public', publicRoutes);
+  // API Routes (Mounted with and without /api prefix for 100% routing resilience)
+  app.use(['/api/auth', '/auth'], authRoutes);
+  app.use(['/api/events', '/events'], eventRoutes);
+  app.use(['/api/participants', '/participants'], participantRoutes);
+  app.use(['/api/tickets', '/tickets'], ticketRoutes);
+  app.use(['/api/attendance', '/attendance'], attendanceRoutes);
+  app.use(['/api/public', '/public'], publicRoutes);
 
   // Centralized Error Handling Middleware
   app.use(errorHandler);

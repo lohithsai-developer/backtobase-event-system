@@ -75,6 +75,7 @@ export const scanTicket = async (req: any, res: Response): Promise<void> => {
         participantEmail: participant.email,
         checkedInAt: registration.checkedInAt,
         checkedInBy: registration.checkedInBy || 'Volunteer',
+        registrationId: registration._id,
       });
       return;
     }
@@ -126,6 +127,8 @@ export const scanTicket = async (req: any, res: Response): Promise<void> => {
       checkedInAt: now,
       checkedInBy: volunteerIdentifier,
       eventName: activeEvent.name,
+      registrationId: registration._id,
+      ticketCode: registration.registrationId,
     });
   } catch (error) {
     logger.error('Error during ticket scanning:', error);

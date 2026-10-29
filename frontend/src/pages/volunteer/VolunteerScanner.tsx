@@ -21,6 +21,11 @@ import {
   Search,
   UserCheck,
   RotateCcw,
+  Zap,
+  Volume2,
+  Square,
+  Crosshair,
+  Undo2,
 } from 'lucide-react';
 import { Badge } from '../../components/Badge';
 import { BackendConfigModal } from '../../components/BackendConfigModal';
@@ -36,6 +41,7 @@ export const VolunteerScanner: React.FC = () => {
 
   // Scanner state
   const [viewMode, setViewMode] = useState<'camera' | 'roster'>('camera');
+  const [scanMode, setScanMode] = useState<'manual' | 'auto'>('manual');
   const [rosterSearch, setRosterSearch] = useState<string>('');
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [scannerStarted, setScannerStarted] = useState<boolean>(false);
@@ -45,10 +51,43 @@ export const VolunteerScanner: React.FC = () => {
   >('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [manualToken, setManualToken] = useState<string>('');
+  const [detectedCode, setDetectedCode] = useState<string | null>(null);
+  const [isCaptureArmed, setIsCaptureArmed] = useState<boolean>(false);
 
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const isScanningLockedRef = useRef<boolean>(false);
+  const detectedTokenRef = useRef<string | null>(null);
+  const lastProcessedTokenRef = useRef<string | null>(null);
+  const isCaptureArmedRef = useRef<boolean>(false);
   const scannerContainerId = 'reader-container';
+
+  // Sound feedback on scan
+  const playAudioFeedback = (isSuccess: boolean) => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      if (isSuccess) {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+        osc.frequency.setValueAtTime(880, ctx.currentTime + 0.08);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      } else {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(300, ctx.currentTime);
+        osc.frequency.setValueAtTime(180, ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      }
+      osc.start();
+      osc.stop(ctx.currentTime + 0.3);
+    } catch (_) {}
+  };
 
   // Fetch active event
   const fetchActiveEvent = async () => {
@@ -70,7 +109,7 @@ export const VolunteerScanner: React.FC = () => {
     fetchActiveEvent();
   }, []);
 
-  // Volunteer manual check-in toggle
+  // Volunteer manual check-in toggle from roster
   const handleToggleAttendee = async (regId: string) => {
     if (!regId || togglingId) return;
     setTogglingId(regId);
@@ -89,8 +128,7 @@ export const VolunteerScanner: React.FC = () => {
   };
 
   // Process a scanned raw token or URL
-  const handleScanToken = async (rawCode: string) => {
-    // Instant synchronous lock to prevent camera multi-frame duplicate trigger
+  const handleProcessToken = async (rawCode: string) => {
     if (isScanningLockedRef.current) return;
     isScanningLockedRef.current = true;
 
@@ -108,6 +146,7 @@ export const VolunteerScanner: React.FC = () => {
       cleanedToken = parts[parts.length - 1].split('?')[0];
     }
 
+    lastProcessedTokenRef.current = cleanedToken;
     setScanStatus('processing');
 
     try {
@@ -117,13 +156,15 @@ export const VolunteerScanner: React.FC = () => {
       });
 
       if (response.success && response.status === 'SUCCESS') {
+        playAudioFeedback(true);
         setScanStatus('success');
         setScanResult(response);
       } else if (response.status === 'ALREADY_CHECKED_IN') {
-        // Double check: if check-in was registered within the last 10 seconds, it is THIS scan confirmation!
+        // If check-in was registered within the last 10 seconds, confirm check-in
         const checkInTime = response.checkedInAt ? new Date(response.checkedInAt).getTime() : 0;
         const diffSeconds = (Date.now() - checkInTime) / 1000;
         if (diffSeconds >= 0 && diffSeconds < 10) {
+          playAudioFeedback(true);
           setScanStatus('success');
           setScanResult({
             ...response,
@@ -132,21 +173,98 @@ export const VolunteerScanner: React.FC = () => {
             message: 'Access Granted - Checked In Just Now',
           });
         } else {
+          playAudioFeedback(false);
           setScanStatus('already_checked');
           setScanResult(response);
         }
       } else if (response.status === 'WRONG_EVENT') {
+        playAudioFeedback(false);
         setScanStatus('wrong_event');
         setScanResult(response);
       } else {
+        playAudioFeedback(false);
         setScanStatus('invalid');
         setScanResult(response);
       }
     } catch (err: any) {
+      playAudioFeedback(false);
       setScanStatus('invalid');
       setScanResult({
         message: err.message || 'Invalid or revoked QR ticket.',
       });
+    } finally {
+      fetchActiveEvent();
+    }
+  };
+
+  // Called on each decoded frame from Html5Qrcode
+  const onQrDecoded = (decodedText: string) => {
+    const raw = decodedText ? decodedText.trim() : '';
+    if (!raw) return;
+
+    let token = raw;
+    if (token.includes('/ticket/')) {
+      const parts = token.split('/ticket/');
+      token = parts[parts.length - 1].split('?')[0];
+    }
+
+    detectedTokenRef.current = token;
+    setDetectedCode(token);
+
+    if (scanMode === 'manual') {
+      // In manual mode, we DO NOT automatically submit!
+      // Only if the user previously pressed "Scan QR Now" (isCaptureArmed) do we capture it:
+      if (isCaptureArmedRef.current) {
+        isCaptureArmedRef.current = false;
+        setIsCaptureArmed(false);
+        handleProcessToken(token);
+      }
+    } else {
+      // Auto-Scan mode: continuous with duplicate guard
+      if (lastProcessedTokenRef.current === token) {
+        // Prevent continuous rescan of the exact same pass!
+        return;
+      }
+      if (isScanningLockedRef.current) return;
+      handleProcessToken(token);
+    }
+  };
+
+  // User taps "Scan QR Now" in manual mode
+  const handleManualCaptureClick = () => {
+    if (detectedTokenRef.current) {
+      handleProcessToken(detectedTokenRef.current);
+    } else {
+      // Arm capture window for 5 seconds waiting for QR to align
+      isCaptureArmedRef.current = true;
+      setIsCaptureArmed(true);
+      setTimeout(() => {
+        isCaptureArmedRef.current = false;
+        setIsCaptureArmed(false);
+      }, 5000);
+    }
+  };
+
+  // Undo check-in directly from scan result card
+  const handleUndoCheckIn = async () => {
+    const regId = scanResult?.registrationId;
+    if (!regId) return;
+    try {
+      setTogglingId(regId);
+      const res = await apiRequest(`/attendance/toggle/${regId}`, {
+        method: 'POST',
+      });
+      if (res.success) {
+        setScanStatus('idle');
+        setScanResult(null);
+        setErrorMessage(`Check-in was undone for ${scanResult.participantName}.`);
+        fetchActiveEvent();
+        resetForNextScan();
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to undo check-in');
+    } finally {
+      setTogglingId(null);
     }
   };
 
@@ -154,6 +272,10 @@ export const VolunteerScanner: React.FC = () => {
     setErrorMessage(null);
     setScanStatus('scanning');
     setScanResult(null);
+    setDetectedCode(null);
+    detectedTokenRef.current = null;
+    isCaptureArmedRef.current = false;
+    setIsCaptureArmed(false);
 
     try {
       if (!html5QrCodeRef.current) {
@@ -172,7 +294,7 @@ export const VolunteerScanner: React.FC = () => {
         await html5QrCodeRef.current.start(
           { facingMode: 'environment' },
           config,
-          (decodedText) => handleScanToken(decodedText),
+          (decodedText) => onQrDecoded(decodedText),
           () => {}
         );
         started = true;
@@ -181,7 +303,7 @@ export const VolunteerScanner: React.FC = () => {
           await html5QrCodeRef.current.start(
             { facingMode: 'user' },
             config,
-            (decodedText) => handleScanToken(decodedText),
+            (decodedText) => onQrDecoded(decodedText),
             () => {}
           );
           started = true;
@@ -191,7 +313,7 @@ export const VolunteerScanner: React.FC = () => {
             await html5QrCodeRef.current.start(
               cameras[0].id,
               config,
-              (decodedText) => handleScanToken(decodedText),
+              (decodedText) => onQrDecoded(decodedText),
               () => {}
             );
             started = true;
@@ -225,7 +347,7 @@ export const VolunteerScanner: React.FC = () => {
 
       const decodedText = await html5QrCodeRef.current.scanFile(file, true);
       if (decodedText) {
-        handleScanToken(decodedText);
+        handleProcessToken(decodedText);
       }
     } catch (err: any) {
       setErrorMessage('No readable QR code found in the selected image. Please try another image or enter the pass token.');
@@ -240,7 +362,7 @@ export const VolunteerScanner: React.FC = () => {
         const attendee = res.participants[0];
         const qrRes = await apiRequest(`/tickets/qr/${attendee.id}`);
         if (qrRes.success && qrRes.qr?.token) {
-          handleScanToken(qrRes.qr.token);
+          handleProcessToken(qrRes.qr.token);
         }
       } else {
         alert('No participants found in active event. Add a participant in Admin first.');
@@ -265,11 +387,15 @@ export const VolunteerScanner: React.FC = () => {
     setScanResult(null);
     setScanStatus('scanning');
     setManualToken('');
+    setDetectedCode(null);
+    detectedTokenRef.current = null;
+    isCaptureArmedRef.current = false;
+    setIsCaptureArmed(false);
 
-    // Unlock scan processing
+    // 400ms delay before accepting new scan
     setTimeout(() => {
       isScanningLockedRef.current = false;
-    }, 300);
+    }, 400);
 
     if (html5QrCodeRef.current) {
       try {
@@ -461,10 +587,16 @@ export const VolunteerScanner: React.FC = () => {
         {errorMessage && (
           <div className="bg-rose-500/15 border border-rose-500/30 rounded-2xl p-4 mb-4 text-xs text-rose-300 flex items-start gap-3">
             <ShieldAlert className="w-5 h-5 shrink-0 text-rose-400 mt-0.5" />
-            <div>
-              <div className="font-bold text-rose-200">Camera Access Notice</div>
+            <div className="flex-1">
+              <div className="font-bold text-rose-200">Camera / Scan Notice</div>
               <div className="mt-1 leading-relaxed">{errorMessage}</div>
             </div>
+            <button
+              onClick={() => setErrorMessage(null)}
+              className="text-rose-400 hover:text-white text-xs font-bold"
+            >
+              Dismiss
+            </button>
           </div>
         )}
 
@@ -482,7 +614,7 @@ export const VolunteerScanner: React.FC = () => {
                 <p className="text-xl font-extrabold text-white mt-2">
                   {scanResult.participantName}
                 </p>
-                <p className="text-xs text-emerald-300/80 mt-0.5">
+                <p className="text-xs text-emerald-300/80 mt-0.5 font-mono">
                   {scanResult.participantEmail}
                 </p>
                 <div className="mt-4 pt-3 border-t border-emerald-500/30 text-xs font-semibold text-emerald-300">
@@ -502,7 +634,7 @@ export const VolunteerScanner: React.FC = () => {
                 <p className="text-xl font-extrabold text-white mt-2">
                   {scanResult.participantName}
                 </p>
-                <p className="text-xs text-amber-300/80 mt-0.5">
+                <p className="text-xs text-amber-300/80 mt-0.5 font-mono">
                   {scanResult.participantEmail}
                 </p>
                 <div className="mt-4 pt-3 border-t border-amber-500/30 text-xs text-amber-300">
@@ -550,23 +682,74 @@ export const VolunteerScanner: React.FC = () => {
               </div>
             )}
 
-            {/* Ready Next Button */}
-            <button
-              onClick={resetForNextScan}
-              className="w-full mt-4 py-4 rounded-2xl font-black text-base bg-[#00e5ff] hover:bg-[#33ebff] text-black shadow-xl shadow-[#00e5ff]/25 transition-all flex items-center justify-center gap-2"
-            >
-              <RefreshCw className="w-5 h-5" />
-              <span>Scan Next Participant</span>
-            </button>
+            {/* Action Buttons: Next Scan & Undo Check-In */}
+            <div className="mt-4 space-y-2">
+              <button
+                onClick={resetForNextScan}
+                className="w-full py-4 rounded-2xl font-black text-base bg-[#00e5ff] hover:bg-[#33ebff] text-black shadow-xl shadow-[#00e5ff]/25 transition-all flex items-center justify-center gap-2"
+              >
+                <RefreshCw className="w-5 h-5" />
+                <span>Scan Next Participant</span>
+              </button>
+
+              {scanResult.registrationId && (
+                <button
+                  type="button"
+                  onClick={handleUndoCheckIn}
+                  disabled={togglingId === scanResult.registrationId}
+                  className="w-full py-2.5 rounded-xl font-semibold text-xs bg-[#171b26] hover:bg-rose-500/15 text-slate-400 hover:text-rose-400 border border-[#272d3f] hover:border-rose-500/30 transition-all flex items-center justify-center gap-2"
+                >
+                  <Undo2 className="w-4 h-4" />
+                  <span>Undo Check-In for this Attendee</span>
+                </button>
+              )}
+            </div>
           </div>
         )}
 
-        {/* Viewfinder Video Container */}
-        {viewMode === 'camera' && !scanResult && (
-          <div className="bg-[#11141c] border border-[#272d3f] rounded-3xl p-4 shadow-2xl flex flex-col items-center">
+        {/* Viewfinder Video Container (Always stays mounted in DOM when in camera mode) */}
+        {viewMode === 'camera' && (
+          <div
+            className={`bg-[#11141c] border border-[#272d3f] rounded-3xl p-4 shadow-2xl flex flex-col items-center ${
+              scanResult ? 'hidden' : 'block'
+            }`}
+          >
+            {/* Mode Selector: Tap to Scan vs Auto Scan */}
+            <div className="w-full flex items-center justify-between gap-2 p-1.5 bg-[#0e1017] border border-[#272d3f] rounded-2xl mb-4 text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setScanMode('manual')}
+                className={`flex-1 py-1.5 px-2 rounded-xl flex items-center justify-center gap-1.5 transition-all ${
+                  scanMode === 'manual'
+                    ? 'bg-[#00e5ff] text-black shadow-md shadow-[#00e5ff]/20'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Crosshair className="w-3.5 h-3.5" />
+                <span>Tap to Scan (Controlled)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setScanMode('auto')}
+                className={`flex-1 py-1.5 px-2 rounded-xl flex items-center justify-center gap-1.5 transition-all ${
+                  scanMode === 'auto'
+                    ? 'bg-amber-400 text-black shadow-md shadow-amber-400/20'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Zap className="w-3.5 h-3.5" />
+                <span>Auto-Scan (Continuous)</span>
+              </button>
+            </div>
+
+            {/* Video Viewfinder Box */}
             <div
               id={scannerContainerId}
-              className="w-full max-w-[320px] aspect-square rounded-2xl overflow-hidden bg-black border-2 border-[#00e5ff]/40 relative"
+              className={`w-full max-w-[320px] aspect-square rounded-2xl overflow-hidden bg-black relative transition-all ${
+                detectedCode
+                  ? 'border-4 border-emerald-400 shadow-lg shadow-emerald-500/30'
+                  : 'border-2 border-[#00e5ff]/40'
+              }`}
             ></div>
 
             {scanStatus === 'processing' && (
@@ -615,10 +798,49 @@ export const VolunteerScanner: React.FC = () => {
             )}
 
             {scannerStarted && (
-              <div className="mt-3 text-center">
-                <span className="text-[11px] font-semibold text-slate-400">
-                  Point camera steadily at participant's QR code
-                </span>
+              <div className="w-full mt-4 space-y-2">
+                {scanMode === 'manual' ? (
+                  <button
+                    type="button"
+                    onClick={handleManualCaptureClick}
+                    className={`w-full py-3.5 px-4 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 transition-all ${
+                      detectedCode
+                        ? 'bg-emerald-400 hover:bg-emerald-300 text-black shadow-lg shadow-emerald-500/30 animate-pulse'
+                        : isCaptureArmed
+                        ? 'bg-amber-400 text-black shadow-lg shadow-amber-400/30'
+                        : 'bg-[#00e5ff] hover:bg-[#33ebff] text-black shadow-lg shadow-[#00e5ff]/20'
+                    }`}
+                  >
+                    <Crosshair className="w-5 h-5" />
+                    <span>
+                      {detectedCode
+                        ? '📸 QR Detected — Tap to Check In!'
+                        : isCaptureArmed
+                        ? 'Align QR Pass Inside Box...'
+                        : '📸 Tap to Scan QR Pass'}
+                    </span>
+                  </button>
+                ) : (
+                  <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center text-xs text-amber-300 font-semibold flex items-center justify-center gap-2">
+                    <Zap className="w-3.5 h-3.5 text-amber-400 animate-bounce" />
+                    <span>Auto-Scanning Active: Point steadily at pass</span>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between text-[11px] text-slate-400 px-1">
+                  <span>
+                    {scanMode === 'manual'
+                      ? 'Manual mode: Will ONLY scan when you tap'
+                      : 'Auto mode: Rescans are paused for same ticket'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={stopScanner}
+                    className="text-rose-400 hover:text-rose-300 font-bold"
+                  >
+                    Stop Camera
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -635,7 +857,7 @@ export const VolunteerScanner: React.FC = () => {
               onSubmit={(e) => {
                 e.preventDefault();
                 if (manualToken.trim()) {
-                  handleScanToken(manualToken.trim());
+                  handleProcessToken(manualToken.trim());
                 }
               }}
               className="flex gap-2"

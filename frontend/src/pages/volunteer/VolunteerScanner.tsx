@@ -1,0 +1,517 @@
+import React, { useEffect, useState, useRef } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Html5Qrcode } from 'html5-qrcode';
+import { useAuth } from '../../context/AuthContext';
+import { apiRequest } from '../../services/api';
+import {
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  Camera,
+  RefreshCw,
+  LogOut,
+  Calendar,
+  KeyRound,
+  ShieldAlert,
+  Upload,
+  Sparkles,
+  FileImage,
+} from 'lucide-react';
+import { Badge } from '../../components/Badge';
+
+export const VolunteerScanner: React.FC = () => {
+  const { user, isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const [activeEvent, setActiveEvent] = useState<any>(null);
+  const [loadingEvent, setLoadingEvent] = useState<boolean>(true);
+
+  // Scanner state
+  const [scannerStarted, setScannerStarted] = useState<boolean>(false);
+  const [scanResult, setScanResult] = useState<any>(null);
+  const [scanStatus, setScanStatus] = useState<
+    'idle' | 'scanning' | 'processing' | 'success' | 'already_checked' | 'wrong_event' | 'invalid'
+  >('idle');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [manualToken, setManualToken] = useState<string>('');
+
+  const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
+  const scannerContainerId = 'reader-container';
+
+  // Fetch active event
+  const fetchActiveEvent = async () => {
+    try {
+      const data = await apiRequest('/public/active-event');
+      if (data.success && data.activeEvent) {
+        setActiveEvent(data.activeEvent);
+      } else {
+        setActiveEvent(null);
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Could not verify active event.');
+    } finally {
+      setLoadingEvent(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchActiveEvent();
+  }, []);
+
+  // Process a scanned raw token or URL
+  const handleScanToken = async (rawCode: string) => {
+    if (scanStatus === 'processing') return;
+
+    // Extract token if attendee presents full URL (e.g. /ticket/<token>)
+    let cleanedToken = rawCode.trim();
+    if (cleanedToken.includes('/ticket/')) {
+      const parts = cleanedToken.split('/ticket/');
+      cleanedToken = parts[parts.length - 1].split('?')[0];
+    }
+
+    setScanStatus('processing');
+
+    try {
+      // Pause scanner while showing result
+      if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
+        await html5QrCodeRef.current.pause(true);
+      }
+
+      const response = await apiRequest('/attendance/scan', {
+        method: 'POST',
+        body: JSON.stringify({ token: cleanedToken }),
+      });
+
+      if (response.success && response.status === 'SUCCESS') {
+        setScanStatus('success');
+        setScanResult(response);
+      } else if (response.status === 'ALREADY_CHECKED_IN') {
+        setScanStatus('already_checked');
+        setScanResult(response);
+      } else if (response.status === 'WRONG_EVENT') {
+        setScanStatus('wrong_event');
+        setScanResult(response);
+      } else {
+        setScanStatus('invalid');
+        setScanResult(response);
+      }
+    } catch (err: any) {
+      setScanStatus('invalid');
+      setScanResult({
+        message: err.message || 'Invalid or revoked QR ticket.',
+      });
+    }
+  };
+
+  const startScanner = async () => {
+    setErrorMessage(null);
+    setScanStatus('scanning');
+    setScanResult(null);
+
+    try {
+      if (!html5QrCodeRef.current) {
+        html5QrCodeRef.current = new Html5Qrcode(scannerContainerId);
+      }
+
+      const config = {
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0,
+      };
+
+      // Auto-fallback: try environment (rear camera), then webcam (user), then any device ID
+      let started = false;
+      try {
+        await html5QrCodeRef.current.start(
+          { facingMode: 'environment' },
+          config,
+          (decodedText) => handleScanToken(decodedText),
+          () => {}
+        );
+        started = true;
+      } catch (e1) {
+        try {
+          await html5QrCodeRef.current.start(
+            { facingMode: 'user' },
+            config,
+            (decodedText) => handleScanToken(decodedText),
+            () => {}
+          );
+          started = true;
+        } catch (e2) {
+          const cameras = await Html5Qrcode.getCameras();
+          if (cameras && cameras.length > 0) {
+            await html5QrCodeRef.current.start(
+              cameras[0].id,
+              config,
+              (decodedText) => handleScanToken(decodedText),
+              () => {}
+            );
+            started = true;
+          }
+        }
+      }
+
+      if (started) {
+        setScannerStarted(true);
+      } else {
+        throw new Error('Camera device could not be opened. You can upload a QR image or enter the pass token below.');
+      }
+    } catch (err: any) {
+      setErrorMessage(
+        err.message ||
+          'Camera access was denied or is not supported on this browser. You can allow camera permission in your browser URL bar, or use "Upload QR Image" or "Manual Entry" below.'
+      );
+      setScanStatus('idle');
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setErrorMessage(null);
+    try {
+      if (!html5QrCodeRef.current) {
+        html5QrCodeRef.current = new Html5Qrcode(scannerContainerId);
+      }
+
+      const decodedText = await html5QrCodeRef.current.scanFile(file, true);
+      if (decodedText) {
+        handleScanToken(decodedText);
+      }
+    } catch (err: any) {
+      setErrorMessage('No readable QR code found in the selected image. Please try another image or enter the pass token.');
+    }
+  };
+
+  const handleTestSampleScan = async () => {
+    if (!activeEvent) return;
+    try {
+      const res = await apiRequest(`/participants/event/${activeEvent.id}?limit=1`);
+      if (res.success && res.participants.length > 0) {
+        const attendee = res.participants[0];
+        const qrRes = await apiRequest(`/tickets/qr/${attendee.id}`);
+        if (qrRes.success && qrRes.qr?.token) {
+          handleScanToken(qrRes.qr.token);
+        }
+      } else {
+        alert('No participants found in active event. Add a participant in Admin first.');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Could not test scan');
+    }
+  };
+
+  const stopScanner = async () => {
+    if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
+      try {
+        await html5QrCodeRef.current.stop();
+        setScannerStarted(false);
+      } catch (err) {
+        console.error('Error stopping QR scanner:', err);
+      }
+    }
+  };
+
+  const resetForNextScan = async () => {
+    setScanResult(null);
+    setScanStatus('scanning');
+    setManualToken('');
+
+    if (html5QrCodeRef.current) {
+      try {
+        html5QrCodeRef.current.resume();
+      } catch {
+        startScanner();
+      }
+    }
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
+        html5QrCodeRef.current.stop().catch(() => {});
+      }
+    };
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-[#08090c] text-white flex flex-col">
+      {/* Volunteer Header */}
+      <header className="bg-[#11141c] border-b border-[#272d3f] px-4 py-3 sticky top-0 z-30 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <img
+            src="/backtobase-logo.png"
+            alt="BacktoBase Logo"
+            className="h-10 w-auto object-contain"
+          />
+          <div>
+            <div className="text-[10px] font-extrabold uppercase tracking-widest text-[#00e5ff]">
+              VOLUNTEER CHECK-IN
+            </div>
+            <div className="text-xs font-bold text-slate-300">Entrance Scanner</div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Link
+            to="/"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 bg-[#171b26] border border-[#272d3f] hover:text-[#00e5ff] hover:border-[#00e5ff] transition-all"
+          >
+            <span>Home</span>
+          </Link>
+          {isAuthenticated && (
+            <Link
+              to="/admin/dashboard"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-[#e6be6d] bg-[#e6be6d]/10 border border-[#e6be6d]/30 hover:bg-[#e6be6d]/20 transition-all"
+            >
+              <span>Admin</span>
+            </Link>
+          )}
+        </div>
+      </header>
+
+      {/* Main Scanner Body */}
+      <main className="flex-1 max-w-md w-full mx-auto p-4 flex flex-col justify-between">
+        {/* Active Event Info Bar */}
+        <div className="bg-[#11141c] border border-[#272d3f] rounded-2xl p-4 mb-4 shadow-lg">
+          {loadingEvent ? (
+            <div className="text-center py-2 text-xs text-slate-400">Loading active event...</div>
+          ) : activeEvent ? (
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#e6be6d]">
+                  Active Event Gate
+                </span>
+                <h2 className="text-base font-extrabold text-white truncate max-w-[220px]">
+                  {activeEvent.name}
+                </h2>
+                <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-0.5">
+                  <Calendar className="w-3.5 h-3.5 text-[#00e5ff]" />
+                  <span>
+                    {new Date(activeEvent.date).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                  </span>
+                </div>
+              </div>
+              <Badge variant="active">LIVE</Badge>
+            </div>
+          ) : (
+            <div className="text-center py-2">
+              <span className="text-rose-400 font-bold text-sm block">
+                No active event at the moment.
+              </span>
+              <span className="text-xs text-slate-400">
+                Please ask the admin to activate an event in the dashboard.
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Camera Permission / Error banner */}
+        {errorMessage && (
+          <div className="bg-rose-500/15 border border-rose-500/30 rounded-2xl p-4 mb-4 text-xs text-rose-300 flex items-start gap-3">
+            <ShieldAlert className="w-5 h-5 shrink-0 text-rose-400 mt-0.5" />
+            <div>
+              <div className="font-bold text-rose-200">Camera Access Notice</div>
+              <div className="mt-1 leading-relaxed">{errorMessage}</div>
+            </div>
+          </div>
+        )}
+
+        {/* Scan Result Feedback Card */}
+        {scanResult && (
+          <div className="mb-4 animate-scaleUp">
+            {scanStatus === 'success' && (
+              <div className="bg-emerald-950/80 border-2 border-emerald-500 rounded-3xl p-6 text-center shadow-2xl shadow-emerald-950/50">
+                <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-3">
+                  <CheckCircle2 className="w-10 h-10" />
+                </div>
+                <h3 className="text-2xl font-black text-emerald-400 tracking-tight">
+                  ATTENDANCE MARKED!
+                </h3>
+                <p className="text-xl font-extrabold text-white mt-2">
+                  {scanResult.participantName}
+                </p>
+                <p className="text-xs text-emerald-300/80 mt-0.5">
+                  {scanResult.participantEmail}
+                </p>
+                <div className="mt-4 pt-3 border-t border-emerald-500/30 text-xs font-semibold text-emerald-300">
+                  Gate entry recorded at {new Date(scanResult.checkedInAt).toLocaleTimeString()}
+                </div>
+              </div>
+            )}
+
+            {scanStatus === 'already_checked' && (
+              <div className="bg-amber-950/80 border-2 border-amber-500 rounded-3xl p-6 text-center shadow-2xl">
+                <div className="w-16 h-16 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center mx-auto mb-3">
+                  <AlertTriangle className="w-10 h-10" />
+                </div>
+                <h3 className="text-2xl font-black text-amber-400 tracking-tight">
+                  ALREADY CHECKED IN
+                </h3>
+                <p className="text-xl font-extrabold text-white mt-2">
+                  {scanResult.participantName}
+                </p>
+                <p className="text-xs text-amber-300/80 mt-0.5">
+                  {scanResult.participantEmail}
+                </p>
+                <div className="mt-4 pt-3 border-t border-amber-500/30 text-xs text-amber-300">
+                  Already admitted at{' '}
+                  <span className="font-bold text-white">
+                    {scanResult.checkedInAt
+                      ? new Date(scanResult.checkedInAt).toLocaleTimeString()
+                      : 'earlier'}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {scanStatus === 'wrong_event' && (
+              <div className="bg-rose-950/80 border-2 border-rose-500 rounded-3xl p-6 text-center shadow-2xl">
+                <div className="w-16 h-16 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto mb-3">
+                  <XCircle className="w-10 h-10" />
+                </div>
+                <h3 className="text-xl font-black text-rose-400 tracking-tight">
+                  WRONG EVENT TICKET
+                </h3>
+                <p className="text-sm text-slate-300 mt-2">
+                  This ticket belongs to a different event:
+                </p>
+                <p className="text-base font-bold text-white mt-1">
+                  "{scanResult.ticketEventName || 'Different Event'}"
+                </p>
+                <p className="text-xs text-rose-300 mt-2">
+                  Cannot be used for {activeEvent?.name}.
+                </p>
+              </div>
+            )}
+
+            {scanStatus === 'invalid' && (
+              <div className="bg-rose-950/80 border-2 border-rose-500 rounded-3xl p-6 text-center shadow-2xl">
+                <div className="w-16 h-16 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto mb-3">
+                  <XCircle className="w-10 h-10" />
+                </div>
+                <h3 className="text-xl font-black text-rose-400 tracking-tight">
+                  INVALID OR REVOKED TICKET
+                </h3>
+                <p className="text-xs text-rose-300 mt-2">
+                  {scanResult.message || 'Ticket not found or has been revoked by admin.'}
+                </p>
+              </div>
+            )}
+
+            {/* Ready Next Button */}
+            <button
+              onClick={resetForNextScan}
+              className="w-full mt-4 py-4 rounded-2xl font-black text-base bg-[#00e5ff] hover:bg-[#33ebff] text-black shadow-xl shadow-[#00e5ff]/25 transition-all flex items-center justify-center gap-2"
+            >
+              <RefreshCw className="w-5 h-5" />
+              <span>Scan Next Participant</span>
+            </button>
+          </div>
+        )}
+
+        {/* Viewfinder Video Container */}
+        {!scanResult && (
+          <div className="bg-[#11141c] border border-[#272d3f] rounded-3xl p-4 shadow-2xl flex flex-col items-center">
+            <div
+              id={scannerContainerId}
+              className="w-full max-w-[320px] aspect-square rounded-2xl overflow-hidden bg-black border-2 border-[#00e5ff]/40 relative"
+            ></div>
+
+            {scanStatus === 'processing' && (
+              <div className="mt-4 flex items-center gap-2 text-xs font-bold text-[#00e5ff]">
+                <div className="w-4 h-4 border-2 border-[#00e5ff] border-t-transparent rounded-full animate-spin"></div>
+                <span>Verifying ticket token with server...</span>
+              </div>
+            )}
+
+            {!scannerStarted && scanStatus !== 'processing' && (
+              <div className="w-full space-y-2 mt-4">
+                <button
+                  onClick={startScanner}
+                  disabled={!activeEvent}
+                  className="w-full py-3.5 px-4 rounded-xl font-bold text-sm bg-gradient-to-r from-[#00e5ff] to-[#00b4d8] text-black shadow-lg shadow-[#00e5ff]/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  <Camera className="w-5 h-5" />
+                  <span>Start Camera Scanner</span>
+                </button>
+
+                {/* Upload QR Image file alternative */}
+                <div className="flex items-center gap-2">
+                  <label className="flex-1 py-2.5 px-3 rounded-xl font-bold text-xs bg-[#171b26] hover:bg-[#1f2433] text-slate-300 border border-[#272d3f] hover:border-[#00e5ff] flex items-center justify-center gap-1.5 transition-all cursor-pointer">
+                    <FileImage className="w-4 h-4 text-[#00e5ff]" />
+                    <span>Upload QR Image</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                    />
+                  </label>
+
+                  {/* Test Attendee Scan button */}
+                  <button
+                    type="button"
+                    onClick={handleTestSampleScan}
+                    disabled={!activeEvent}
+                    className="py-2.5 px-3 rounded-xl font-bold text-xs bg-[#e6be6d]/15 hover:bg-[#e6be6d]/25 text-[#e6be6d] border border-[#e6be6d]/30 flex items-center justify-center gap-1.5 transition-all disabled:opacity-40"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>Test Active Pass</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {scannerStarted && (
+              <div className="mt-3 text-center">
+                <span className="text-[11px] font-semibold text-slate-400">
+                  Point camera steadily at participant's QR code
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Manual Token Entry Fallback */}
+        <div className="mt-4 pt-4 border-t border-[#272d3f]">
+          <div className="text-[11px] uppercase font-bold text-slate-400 mb-2 flex items-center gap-1.5">
+            <KeyRound className="w-3.5 h-3.5 text-[#e6be6d]" />
+            <span>Manual Entry / Backup</span>
+          </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (manualToken.trim()) {
+                handleScanToken(manualToken.trim());
+              }
+            }}
+            className="flex gap-2"
+          >
+            <input
+              type="text"
+              value={manualToken}
+              onChange={(e) => setManualToken(e.target.value)}
+              placeholder="Paste token or ticket URL..."
+              className="flex-1 bg-[#171b26] border border-[#272d3f] rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#00e5ff]"
+            />
+            <button
+              type="submit"
+              disabled={!manualToken.trim()}
+              className="px-4 py-2 bg-[#1f2433] hover:bg-[#272d3f] text-[#00e5ff] font-bold text-xs rounded-xl border border-[#272d3f] disabled:opacity-40"
+            >
+              Verify
+            </button>
+          </form>
+        </div>
+      </main>
+    </div>
+  );
+};

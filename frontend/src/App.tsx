@@ -22,6 +22,7 @@ import { Settings } from './pages/admin/Settings';
 
 // Volunteer / Staff Pages
 import { VolunteerScanner } from './pages/volunteer/VolunteerScanner';
+import { InstallPrompt } from './components/InstallPrompt';
 
 export const App: React.FC = () => {
   return (
@@ -61,6 +62,7 @@ export const App: React.FC = () => {
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <InstallPrompt />
       </BrowserRouter>
     </AuthProvider>
   );

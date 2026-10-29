@@ -1,0 +1,57 @@
+{
+  "name": "BacktoBase Mega Event",
+  "short_name": "BacktoBase",
+  "description": "Real-time QR ticket verification, gate access control, and live attendance metrics.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#08090c",
+  "theme_color": "#08090c",
+  "categories": ["events", "business", "productivity"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/backtobase-logo.png",
+      "sizes": "219x200",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "QR Entrance Scanner",
+      "short_name": "Scanner",
+      "description": "Scan attendee tickets at the entrance gate",
+      "url": "/volunteer/scanner",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Admin Console",
+      "short_name": "Admin",
+      "description": "Manage mega events, participants and attendance",
+      "url": "/admin/login",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}

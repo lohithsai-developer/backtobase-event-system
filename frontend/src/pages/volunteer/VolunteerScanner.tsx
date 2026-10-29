@@ -16,8 +16,10 @@ import {
   Upload,
   Sparkles,
   FileImage,
+  Server,
 } from 'lucide-react';
 import { Badge } from '../../components/Badge';
+import { BackendConfigModal } from '../../components/BackendConfigModal';
 
 export const VolunteerScanner: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuth();
@@ -25,6 +27,7 @@ export const VolunteerScanner: React.FC = () => {
 
   const [activeEvent, setActiveEvent] = useState<any>(null);
   const [loadingEvent, setLoadingEvent] = useState<boolean>(true);
+  const [configModalOpen, setConfigModalOpen] = useState(false);
 
   // Scanner state
   const [scannerStarted, setScannerStarted] = useState<boolean>(false);
@@ -302,13 +305,21 @@ export const VolunteerScanner: React.FC = () => {
               <Badge variant="active">LIVE</Badge>
             </div>
           ) : (
-            <div className="text-center py-2">
-              <span className="text-rose-400 font-bold text-sm block">
-                No active event at the moment.
+            <div className="text-center py-2 space-y-2">
+              <span className="text-amber-400 font-bold text-sm block">
+                No active event found
               </span>
-              <span className="text-xs text-slate-400">
-                Please ask the admin to activate an event in the dashboard.
-              </span>
+              <p className="text-xs text-slate-400 max-w-xs mx-auto">
+                Ensure an event is activated in Admin, or verify your phone is connected to your Render backend API.
+              </p>
+              <button
+                type="button"
+                onClick={() => setConfigModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#171b26] border border-[#272d3f] hover:border-[#00e5ff] text-xs font-semibold text-slate-300 hover:text-white transition-all"
+              >
+                <Server className="w-3.5 h-3.5 text-[#00e5ff]" />
+                <span>Configure Cloud API URL</span>
+              </button>
             </div>
           )}
         </div>
@@ -512,6 +523,12 @@ export const VolunteerScanner: React.FC = () => {
           </form>
         </div>
       </main>
+
+      <BackendConfigModal
+        isOpen={configModalOpen}
+        onClose={() => setConfigModalOpen(false)}
+        onSaved={fetchActiveEvent}
+      />
     </div>
   );
 };

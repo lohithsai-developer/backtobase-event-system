@@ -28,11 +28,13 @@ export const App: React.FC = () => {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* Public Routes */}
+          {/* Public Portal Route */}
           <Route element={<PublicLayout />}>
             <Route path="/" element={<PublicDashboard />} />
-            <Route path="/ticket/:token" element={<TicketView />} />
           </Route>
+
+          {/* Standalone Participant Digital Pass (Zero Admin/Volunteer UI) */}
+          <Route path="/ticket/:token" element={<TicketView />} />
 
           {/* Authentication Routes - Only Admin Login */}
           <Route path="/admin/login" element={<AdminLogin />} />

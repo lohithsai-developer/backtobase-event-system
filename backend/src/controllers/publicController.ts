@@ -26,6 +26,21 @@ export const getPublicActiveEvent = async (req: Request, res: Response): Promise
     const attendancePercentage =
       totalParticipants > 0 ? Math.round((totalAttended / totalParticipants) * 100 * 10) / 10 : 0;
 
+    // Fetch participant list for active event
+    const registrations = await EventRegistration.find({ eventId: activeEvent._id })
+      .populate<{ participantId: any }>('participantId')
+      .sort({ checkedInAt: -1, createdAt: -1 })
+      .limit(100);
+
+    const participants = registrations.map((r: any) => ({
+      id: r._id,
+      name: r.participantId?.name || 'Attendee',
+      email: r.participantId?.email || '',
+      attendanceStatus: r.attendanceStatus === 'checked_in' ? 'Checked In' : 'Registered',
+      isCheckedIn: r.attendanceStatus === 'checked_in',
+      checkedInAt: r.checkedInAt,
+    }));
+
     res.json({
       success: true,
       activeEvent: {
@@ -37,6 +52,7 @@ export const getPublicActiveEvent = async (req: Request, res: Response): Promise
         totalAttended,
         remainingParticipants,
         attendancePercentage,
+        participants,
       },
     });
   } catch (error) {

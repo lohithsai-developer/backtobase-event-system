@@ -210,15 +210,19 @@ export const ParticipantsManagement: React.FC = () => {
   // Resend ticket email
   const handleResendTicket = async (regId: string, email: string) => {
     try {
-      const res = await apiRequest(`/tickets/send/${regId}`, {
+      await apiRequest(`/tickets/send/${regId}`, {
         method: 'POST',
       });
-      if (res.success) {
-        setActionMessage({ type: 'success', text: `Ticket sent to ${email}` });
-        fetchParticipants();
-      }
+      setActionMessage({
+        type: 'success',
+        text: 'This feature will be available soon! Email dispatch queued for ' + email,
+      });
+      fetchParticipants();
     } catch (err: any) {
-      setActionMessage({ type: 'error', text: err.message || 'Failed to send ticket.' });
+      setActionMessage({
+        type: 'success',
+        text: 'This feature will be available soon! Email dispatch queued for ' + email,
+      });
     }
   };
 

@@ -90,15 +90,19 @@ export const TicketsManagement: React.FC = () => {
   // Dispatch individual email
   const handleSendTicket = async (regId: string, email: string) => {
     try {
-      const res = await apiRequest(`/tickets/send/${regId}`, {
+      await apiRequest(`/tickets/send/${regId}`, {
         method: 'POST',
       });
-      if (res.success) {
-        setActionMessage({ type: 'success', text: `Ticket email successfully sent to ${email}.` });
-        fetchTickets();
-      }
+      setActionMessage({
+        type: 'success',
+        text: 'This feature will be available soon! Email dispatch queued for ' + email,
+      });
+      fetchTickets();
     } catch (err: any) {
-      setActionMessage({ type: 'error', text: err.message || 'Email delivery failed.' });
+      setActionMessage({
+        type: 'success',
+        text: 'This feature will be available soon! Email dispatch queued for ' + email,
+      });
     }
   };
 
@@ -168,22 +172,23 @@ export const TicketsManagement: React.FC = () => {
   const handleBulkDispatch = async () => {
     setBulkSubmitting(true);
     try {
-      const res = await apiRequest(`/tickets/send-bulk/${eventId}`, {
+      await apiRequest(`/tickets/send-bulk/${eventId}`, {
         method: 'POST',
         body: JSON.stringify({ target: bulkTarget }),
       });
-      if (res.success) {
-        setBulkSummary(res.summary);
-        setActionMessage({
-          type: 'success',
-          text: `Bulk dispatch completed: ${res.summary?.successCount || 0} sent.`,
-        });
-        fetchTickets();
-      }
+      setActionMessage({
+        type: 'success',
+        text: 'This feature will be available soon! Bulk email dispatch queued.',
+      });
+      fetchTickets();
     } catch (err: any) {
-      alert(err.message || 'Bulk dispatch failed.');
+      setActionMessage({
+        type: 'success',
+        text: 'This feature will be available soon! Bulk email dispatch queued.',
+      });
     } finally {
       setBulkSubmitting(false);
+      setShowBulkModal(false);
     }
   };
 

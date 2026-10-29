@@ -40,6 +40,7 @@ export const VolunteerScanner: React.FC = () => {
   const [manualToken, setManualToken] = useState<string>('');
 
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
+  const isScanningLockedRef = useRef<boolean>(false);
   const scannerContainerId = 'reader-container';
 
   // Fetch active event
@@ -64,7 +65,16 @@ export const VolunteerScanner: React.FC = () => {
 
   // Process a scanned raw token or URL
   const handleScanToken = async (rawCode: string) => {
-    if (scanStatus === 'processing') return;
+    // Instant synchronous lock to prevent camera multi-frame duplicate trigger
+    if (isScanningLockedRef.current) return;
+    isScanningLockedRef.current = true;
+
+    // Immediately pause scanner so no further frames are analyzed
+    if (html5QrCodeRef.current) {
+      try {
+        html5QrCodeRef.current.pause(true);
+      } catch (_) {}
+    }
 
     // Extract token if attendee presents full URL (e.g. /ticket/<token>)
     let cleanedToken = rawCode.trim();
@@ -76,11 +86,6 @@ export const VolunteerScanner: React.FC = () => {
     setScanStatus('processing');
 
     try {
-      // Pause scanner while showing result
-      if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
-        await html5QrCodeRef.current.pause(true);
-      }
-
       const response = await apiRequest('/attendance/scan', {
         method: 'POST',
         body: JSON.stringify({ token: cleanedToken }),
@@ -90,8 +95,21 @@ export const VolunteerScanner: React.FC = () => {
         setScanStatus('success');
         setScanResult(response);
       } else if (response.status === 'ALREADY_CHECKED_IN') {
-        setScanStatus('already_checked');
-        setScanResult(response);
+        // Double check: if check-in was registered within the last 10 seconds, it is THIS scan confirmation!
+        const checkInTime = response.checkedInAt ? new Date(response.checkedInAt).getTime() : 0;
+        const diffSeconds = (Date.now() - checkInTime) / 1000;
+        if (diffSeconds >= 0 && diffSeconds < 10) {
+          setScanStatus('success');
+          setScanResult({
+            ...response,
+            success: true,
+            status: 'SUCCESS',
+            message: 'Access Granted - Checked In Just Now',
+          });
+        } else {
+          setScanStatus('already_checked');
+          setScanResult(response);
+        }
       } else if (response.status === 'WRONG_EVENT') {
         setScanStatus('wrong_event');
         setScanResult(response);
@@ -222,6 +240,11 @@ export const VolunteerScanner: React.FC = () => {
     setScanResult(null);
     setScanStatus('scanning');
     setManualToken('');
+
+    // Unlock scan processing
+    setTimeout(() => {
+      isScanningLockedRef.current = false;
+    }, 300);
 
     if (html5QrCodeRef.current) {
       try {

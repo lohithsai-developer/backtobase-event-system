@@ -5,7 +5,7 @@ export const ENV = {
   PORT: process.env.PORT || '5000',
   NODE_ENV: process.env.NODE_ENV || 'development',
   MONGODB_URI: process.env.MONGODB_URI || '',
-  FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173',
+  FRONTEND_URL: process.env.FRONTEND_URL || 'https://backtobaseevents.vercel.app',
   JWT_SECRET: process.env.SESSION_SECRET || process.env.JWT_SECRET || 'backtobase-mega-event-super-secret-key-change-in-prod',
   ADMIN_USERNAME: process.env.ADMIN_USERNAME || '-admin',
   ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || '-admin@backtobase',
@@ -18,5 +18,5 @@ export const ENV = {
   SMTP_USER: process.env.SMTP_USER || '',
   SMTP_PASS: process.env.SMTP_PASS || '',
   EMAIL_FROM: process.env.EMAIL_FROM || 'BacktoBase Tickets <tickets@backtobase.com>',
-  PUBLIC_APP_URL: process.env.PUBLIC_APP_URL || 'http://localhost:5173',
+  PUBLIC_APP_URL: process.env.PUBLIC_APP_URL || 'https://backtobaseevents.vercel.app',
 };

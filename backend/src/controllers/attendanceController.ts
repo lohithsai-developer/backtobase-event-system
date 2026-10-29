@@ -192,7 +192,17 @@ export const getEventAttendance = async (req: Request, res: Response): Promise<v
 
     const records = await EventRegistration.aggregate(pipeline);
 
-    const baseUrl = process.env.PUBLIC_APP_URL || process.env.FRONTEND_URL || 'https://backtobaseevents.vercel.app';
+    const getBaseUrl = () => {
+      const origin = req.get('origin') || req.get('referer');
+      if (origin && !origin.includes('localhost')) {
+        return origin.replace(/\/$/, '');
+      }
+      if (process.env.PUBLIC_APP_URL && !process.env.PUBLIC_APP_URL.includes('localhost')) {
+        return process.env.PUBLIC_APP_URL;
+      }
+      return 'https://backtobaseevents.vercel.app';
+    };
+    const baseUrl = getBaseUrl();
 
     // Output attendance table with id and helper fields for toggling
     const attendanceTable = records.map((r) => ({

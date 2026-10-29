@@ -313,7 +313,17 @@ export const getAllTicketLinks = async (req: Request, res: Response): Promise<vo
       .populate<{ eventId: any }>('eventId')
       .sort({ 'participantId.name': 1 });
 
-    const baseUrl = ENV.PUBLIC_APP_URL || ENV.FRONTEND_URL || 'https://backtobaseevents.vercel.app';
+    const getBaseUrl = () => {
+      const origin = req.get('origin') || req.get('referer');
+      if (origin && !origin.includes('localhost')) {
+        return origin.replace(/\/$/, '');
+      }
+      if (ENV.PUBLIC_APP_URL && !ENV.PUBLIC_APP_URL.includes('localhost')) {
+        return ENV.PUBLIC_APP_URL;
+      }
+      return 'https://backtobaseevents.vercel.app';
+    };
+    const baseUrl = getBaseUrl();
 
     const links = await Promise.all(
       registrations.map(async (r: any) => {
@@ -363,7 +373,17 @@ export const exportTicketLinks = async (req: Request, res: Response): Promise<vo
       .populate<{ participantId: any }>('participantId')
       .populate<{ eventId: any }>('eventId');
 
-    const baseUrl = ENV.PUBLIC_APP_URL || ENV.FRONTEND_URL || 'https://backtobaseevents.vercel.app';
+    const getBaseUrl = () => {
+      const origin = req.get('origin') || req.get('referer');
+      if (origin && !origin.includes('localhost')) {
+        return origin.replace(/\/$/, '');
+      }
+      if (ENV.PUBLIC_APP_URL && !ENV.PUBLIC_APP_URL.includes('localhost')) {
+        return ENV.PUBLIC_APP_URL;
+      }
+      return 'https://backtobaseevents.vercel.app';
+    };
+    const baseUrl = getBaseUrl();
 
     const rows = await Promise.all(
       registrations.map(async (r: any) => {

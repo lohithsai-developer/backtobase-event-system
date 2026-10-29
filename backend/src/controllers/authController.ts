@@ -15,15 +15,20 @@ export const adminLogin = async (req: Request, res: Response): Promise<void> => 
     }
 
     const cleanUsername = username.trim().toLowerCase();
-    const isAdminUser = cleanUsername === 'admin' || cleanUsername === '-admin';
+    const isAdminUser =
+      cleanUsername === 'admin' ||
+      cleanUsername === '-admin' ||
+      cleanUsername === 'admin@backtobase' ||
+      cleanUsername === '-admin@backtobase';
 
-    let user = await User.findOne({ username: cleanUsername, role: 'admin' });
-    if (!user && isAdminUser) {
-      user = await User.findOne({
-        username: cleanUsername === 'admin' ? '-admin' : 'admin',
-        role: 'admin',
-      });
-    }
+    let user = await User.findOne({
+      $or: [
+        { username: cleanUsername },
+        { username: '-admin' },
+        { username: 'admin' },
+      ],
+      role: 'admin',
+    });
 
     const validPasswords = [
       ENV.ADMIN_PASSWORD,

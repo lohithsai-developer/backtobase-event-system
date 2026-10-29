@@ -1,4 +1,26 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+export const getApiBase = (): string => {
+  const custom = localStorage.getItem('btb_backend_url');
+  if (custom && custom.trim()) {
+    return custom.trim().replace(/\/+$/, '');
+  }
+  const envUrl = import.meta.env.VITE_API_BASE_URL;
+  if (envUrl && envUrl.trim()) {
+    return envUrl.trim().replace(/\/+$/, '');
+  }
+  return '/api';
+};
+
+export const setCustomApiBase = (url: string): void => {
+  if (!url || !url.trim()) {
+    localStorage.removeItem('btb_backend_url');
+  } else {
+    let clean = url.trim().replace(/\/+$/, '');
+    if (!clean.endsWith('/api') && !clean.includes('/api/')) {
+      clean = `${clean}/api`;
+    }
+    localStorage.setItem('btb_backend_url', clean);
+  }
+};
 
 export const getAuthToken = (): string | null => {
   return localStorage.getItem('btb_token');
@@ -43,12 +65,28 @@ export async function apiRequest<T = any>(
     headers.set('Content-Type', 'application/json');
   }
 
-  const url = endpoint.startsWith('http') ? endpoint : `${API_BASE}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
+  const apiBase = getApiBase();
+  const url = endpoint.startsWith('http')
+    ? endpoint
+    : `${apiBase}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...options,
+      headers,
+    });
+  } catch (netErr: any) {
+    throw new Error(
+      `Cannot connect to backend server at ${apiBase}. Ensure backend is running or configure backend URL.`
+    );
+  }
+
+  if (response.status === 405) {
+    throw new Error(
+      `HTTP 405: Backend API route not reached at ${apiBase}. If running on Vercel, click "Configure Backend API URL" below to point to your Render backend.`
+    );
+  }
 
   const contentType = response.headers.get('content-type') || '';
   if (contentType.includes('application/json')) {

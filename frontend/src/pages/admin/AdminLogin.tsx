@@ -1,17 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { apiRequest } from '../../services/api';
-import { ShieldCheck, Lock, User, AlertCircle, ArrowLeft } from 'lucide-react';
+import { apiRequest, getApiBase, setCustomApiBase } from '../../services/api';
+import { ShieldCheck, Lock, User, AlertCircle, ArrowLeft, Server, Check } from 'lucide-react';
 
 export const AdminLogin: React.FC = () => {
   const [username, setUsername] = useState('-admin');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [backendUrl, setBackendUrl] = useState(getApiBase());
+  const [showConfig, setShowConfig] = useState(false);
+  const [savedUrlMsg, setSavedUrlMsg] = useState(false);
+
+  useEffect(() => {
+    setBackendUrl(getApiBase());
+  }, []);
 
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  const handleSaveBackendUrl = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCustomApiBase(backendUrl);
+    setSavedUrlMsg(true);
+    setError(null);
+    setTimeout(() => setSavedUrlMsg(false), 3000);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +46,11 @@ export const AdminLogin: React.FC = () => {
         setError(data.message || 'Login failed.');
       }
     } catch (err: any) {
-      setError(err.message || 'Invalid administrator username or password.');
+      const msg = err.message || 'Invalid administrator credentials.';
+      setError(msg);
+      if (msg.includes('405') || msg.includes('Cannot connect')) {
+        setShowConfig(true);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -134,7 +153,54 @@ export const AdminLogin: React.FC = () => {
           </button>
         </form>
 
-        <div className="mt-8 pt-6 border-t border-[#272d3f] text-center">
+        {/* Backend API Configuration Toggle */}
+        <div className="mt-6 pt-5 border-t border-[#272d3f]/60">
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => setShowConfig(!showConfig)}
+              className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-[#00e5ff] transition-colors"
+            >
+              <Server className="w-3.5 h-3.5" />
+              <span>{showConfig ? 'Hide Backend Server Settings' : 'Configure Backend API URL'}</span>
+            </button>
+            <span className="text-[11px] text-slate-500 font-mono truncate max-w-[170px]" title={backendUrl}>
+              {backendUrl}
+            </span>
+          </div>
+
+          {showConfig && (
+            <form onSubmit={handleSaveBackendUrl} className="mt-3 p-3.5 bg-[#171b26] border border-[#272d3f] rounded-xl space-y-2">
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Render Backend URL
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={backendUrl}
+                  onChange={(e) => setBackendUrl(e.target.value)}
+                  placeholder="https://your-service.onrender.com/api"
+                  className="flex-1 px-3 py-1.5 bg-[#0e1017] border border-[#272d3f] rounded-lg text-white text-xs font-mono focus:outline-none focus:border-[#00e5ff]"
+                />
+                <button
+                  type="submit"
+                  className="px-3 py-1.5 bg-[#00e5ff] hover:bg-[#00c8e6] text-black font-bold text-xs rounded-lg flex items-center gap-1"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Save</span>
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-400">
+                Paste your deployed Render backend URL (e.g. <code className="text-[#00e5ff]">https://backtobase-backend.onrender.com/api</code>) so the Vercel frontend can connect directly to it.
+              </p>
+              {savedUrlMsg && (
+                <p className="text-xs text-emerald-400 font-medium">Backend URL updated and saved!</p>
+              )}
+            </form>
+          )}
+        </div>
+
+        <div className="mt-4 pt-4 border-t border-[#272d3f] text-center">
           <p className="text-xs text-slate-500">
             Need to scan attendee tickets?{' '}
             <Link to="/volunteer/scanner" className="text-[#00e5ff] font-bold hover:underline">

@@ -153,7 +153,7 @@ export const TicketsManagement: React.FC = () => {
   // Copy pass link for individual participant
   const handleCopyLink = (p: any) => {
     const baseUrl = window.location.origin;
-    const url = p.ticketToken ? `${baseUrl}/ticket/${p.ticketToken}` : `${baseUrl}/ticket/${p.id}`;
+    const url = p.ticketToken ? `${baseUrl}/pass/${p.ticketToken}` : `${baseUrl}/pass/${p.id}`;
     navigator.clipboard.writeText(url);
     setActionMessage({
       type: 'success',
@@ -164,7 +164,7 @@ export const TicketsManagement: React.FC = () => {
   // Open direct email draft
   const handleEmailDirect = (p: any) => {
     const baseUrl = window.location.origin;
-    const link = p.ticketToken ? `${baseUrl}/ticket/${p.ticketToken}` : `${baseUrl}/ticket/${p.id}`;
+    const link = p.ticketToken ? `${baseUrl}/pass/${p.ticketToken}` : `${baseUrl}/pass/${p.id}`;
     const subject = encodeURIComponent(`Your BacktoBase Mega Event Ticket Pass`);
     const body = encodeURIComponent(
       `Hello ${p.name},\n\nHere is your official digital entry ticket pass for the BacktoBase Mega Event:\n${link}\n\nPlease present the QR code on your phone at the check-in gate for verified admission.\n\nBest regards,\nBacktoBase Event Team`

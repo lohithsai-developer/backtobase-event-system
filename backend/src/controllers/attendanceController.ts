@@ -216,7 +216,7 @@ export const getEventAttendance = async (req: Request, res: Response): Promise<v
       checkedIn: r.attendanceStatus === 'checked_in' ? 'Yes' : 'No',
       isCheckedIn: r.attendanceStatus === 'checked_in',
       checkedInAt: r.checkedInAt,
-      ticketUrl: r.ticketToken ? `${baseUrl}/ticket/${r.ticketToken}` : '',
+      ticketUrl: r.ticketToken ? `${baseUrl}/pass/${r.ticketToken}` : '',
     }));
 
     res.json({

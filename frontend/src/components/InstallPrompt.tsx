@@ -1,12 +1,25 @@
 import React, { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { X, Download, Smartphone } from 'lucide-react';
 
 export const InstallPrompt: React.FC = () => {
+  const location = useLocation();
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
 
+  // Check if current page is an attendee ticket or pass view
+  const isParticipantPass =
+    location.pathname.startsWith('/ticket') ||
+    location.pathname.startsWith('/pass');
+
   useEffect(() => {
+    // If attendee is viewing their personal ticket pass, NEVER prompt to install
+    if (isParticipantPass) {
+      setIsVisible(false);
+      return;
+    }
+
     // If already running in standalone PWA mode, don't show prompt
     if (
       window.matchMedia('(display-mode: standalone)').matches ||
@@ -16,6 +29,15 @@ export const InstallPrompt: React.FC = () => {
     }
 
     const handler = (e: Event) => {
+      // Guard against participant pass routes
+      if (
+        window.location.pathname.startsWith('/ticket') ||
+        window.location.pathname.startsWith('/pass')
+      ) {
+        e.preventDefault();
+        return;
+      }
+
       e.preventDefault();
       setDeferredPrompt(e);
       if (!sessionStorage.getItem('btb_install_dismissed')) {
@@ -28,7 +50,7 @@ export const InstallPrompt: React.FC = () => {
     return () => {
       window.removeEventListener('beforeinstallprompt', handler);
     };
-  }, []);
+  }, [isParticipantPass, location.pathname]);
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
@@ -46,7 +68,7 @@ export const InstallPrompt: React.FC = () => {
     sessionStorage.setItem('btb_install_dismissed', 'true');
   };
 
-  if (!isVisible || isDismissed) return null;
+  if (isParticipantPass || !isVisible || isDismissed) return null;
 
   return (
     <div className="fixed bottom-20 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 sm:max-w-sm z-50 animate-slideUp">

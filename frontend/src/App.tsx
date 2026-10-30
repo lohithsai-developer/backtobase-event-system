@@ -36,6 +36,7 @@ export const App: React.FC = () => {
 
           {/* Standalone Participant Digital Pass (Zero Admin/Volunteer UI) */}
           <Route path="/ticket/:token" element={<TicketView />} />
+          <Route path="/pass/:token" element={<TicketView />} />
 
           {/* Authentication Routes - Only Admin Login */}
           <Route path="/admin/login" element={<AdminLogin />} />

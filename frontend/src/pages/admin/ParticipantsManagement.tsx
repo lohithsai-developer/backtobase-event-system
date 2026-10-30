@@ -271,7 +271,7 @@ export const ParticipantsManagement: React.FC = () => {
   // Copy link for participant
   const handleCopyLink = (p: any) => {
     const baseUrl = window.location.origin;
-    const url = p.ticketToken ? `${baseUrl}/ticket/${p.ticketToken}` : `${baseUrl}/ticket/${p.id}`;
+    const url = p.ticketToken ? `${baseUrl}/pass/${p.ticketToken}` : `${baseUrl}/pass/${p.id}`;
     navigator.clipboard.writeText(url);
     setActionMessage({
       type: 'success',
@@ -282,7 +282,7 @@ export const ParticipantsManagement: React.FC = () => {
   // Open direct mail client with prefilled ticket pass link
   const handleEmailDirect = (p: any) => {
     const baseUrl = window.location.origin;
-    const url = p.ticketToken ? `${baseUrl}/ticket/${p.ticketToken}` : `${baseUrl}/ticket/${p.id}`;
+    const url = p.ticketToken ? `${baseUrl}/pass/${p.ticketToken}` : `${baseUrl}/pass/${p.id}`;
     const subject = encodeURIComponent(`Your Entry Ticket Pass - BacktoBase Mega Event`);
     const body = encodeURIComponent(
       `Hello ${p.name},\n\nHere is your official digital entry pass link for the event:\n${url}\n\nPlease keep this pass handy on your mobile phone to scan at the entrance gate.\n\nBest regards,\nBacktoBase Event Team`

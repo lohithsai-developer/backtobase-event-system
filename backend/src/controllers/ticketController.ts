@@ -314,6 +314,9 @@ export const getAllTicketLinks = async (req: Request, res: Response): Promise<vo
       .sort({ 'participantId.name': 1 });
 
     const getBaseUrl = () => {
+      if (process.env.PUBLIC_PASS_URL && !process.env.PUBLIC_PASS_URL.includes('localhost')) {
+        return process.env.PUBLIC_PASS_URL.replace(/\/$/, '');
+      }
       const origin = req.get('origin') || req.get('referer');
       if (origin && !origin.includes('localhost')) {
         return origin.replace(/\/$/, '');
@@ -340,7 +343,7 @@ export const getAllTicketLinks = async (req: Request, res: Response): Promise<vo
           name: r.participantId ? r.participantId.name : 'Attendee',
           email: r.participantId ? r.participantId.email : '',
           token,
-          ticketUrl: `${baseUrl}/ticket/${token}`,
+          ticketUrl: `${baseUrl}/pass/${token}`,
           attendanceStatus: r.attendanceStatus === 'checked_in' ? 'Checked In' : 'Not Checked In',
           isCheckedIn: r.attendanceStatus === 'checked_in',
         };
@@ -374,6 +377,9 @@ export const exportTicketLinks = async (req: Request, res: Response): Promise<vo
       .populate<{ eventId: any }>('eventId');
 
     const getBaseUrl = () => {
+      if (process.env.PUBLIC_PASS_URL && !process.env.PUBLIC_PASS_URL.includes('localhost')) {
+        return process.env.PUBLIC_PASS_URL.replace(/\/$/, '');
+      }
       const origin = req.get('origin') || req.get('referer');
       if (origin && !origin.includes('localhost')) {
         return origin.replace(/\/$/, '');
@@ -398,7 +404,7 @@ export const exportTicketLinks = async (req: Request, res: Response): Promise<vo
           'Attendee Name': r.participantId ? r.participantId.name : 'Attendee',
           'Email Address': r.participantId ? r.participantId.email : '',
           'Pass ID': r.registrationId,
-          'Unique Ticket Pass Link': `${baseUrl}/ticket/${token}`,
+          'Unique Ticket Pass Link': `${baseUrl}/pass/${token}`,
           'Attendance Status': r.attendanceStatus === 'checked_in' ? 'Checked In' : 'Not Checked In',
         };
       })

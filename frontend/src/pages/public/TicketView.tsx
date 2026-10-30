@@ -10,6 +10,32 @@ export const TicketView: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Suppress PWA Manifest and install prompts on the participant ticket pass
+  useEffect(() => {
+    document.title = 'Participant Gate Pass — BacktoBase';
+
+    // Detach manifest link so mobile Chrome will NOT consider this page an installable staff app
+    const manifestTag = document.querySelector('link[rel="manifest"]');
+    const originalHref = manifestTag?.getAttribute('href') || '/manifest.json';
+    if (manifestTag) {
+      manifestTag.removeAttribute('href');
+    }
+
+    // Intercept and prevent beforeinstallprompt for attendees
+    const suppressInstall = (e: Event) => {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    };
+    window.addEventListener('beforeinstallprompt', suppressInstall, { capture: true });
+
+    return () => {
+      if (manifestTag) {
+        manifestTag.setAttribute('href', originalHref);
+      }
+      window.removeEventListener('beforeinstallprompt', suppressInstall, { capture: true });
+    };
+  }, []);
+
   useEffect(() => {
     const fetchTicket = async () => {
       if (!token) return;

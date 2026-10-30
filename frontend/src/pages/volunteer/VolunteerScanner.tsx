@@ -139,10 +139,13 @@ export const VolunteerScanner: React.FC = () => {
       } catch (_) {}
     }
 
-    // Extract token if attendee presents full URL (e.g. /ticket/<token>)
+    // Extract token if attendee presents full URL (e.g. /ticket/<token> or /pass/<token>)
     let cleanedToken = rawCode.trim();
     if (cleanedToken.includes('/ticket/')) {
       const parts = cleanedToken.split('/ticket/');
+      cleanedToken = parts[parts.length - 1].split('?')[0];
+    } else if (cleanedToken.includes('/pass/')) {
+      const parts = cleanedToken.split('/pass/');
       cleanedToken = parts[parts.length - 1].split('?')[0];
     }
 
@@ -205,6 +208,9 @@ export const VolunteerScanner: React.FC = () => {
     let token = raw;
     if (token.includes('/ticket/')) {
       const parts = token.split('/ticket/');
+      token = parts[parts.length - 1].split('?')[0];
+    } else if (token.includes('/pass/')) {
+      const parts = token.split('/pass/');
       token = parts[parts.length - 1].split('?')[0];
     }
 

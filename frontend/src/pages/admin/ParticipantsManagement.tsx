@@ -20,6 +20,12 @@ import {
   QrCode,
   ExternalLink,
   Copy,
+  AlertTriangle,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Layers,
+  ListOrdered,
 } from 'lucide-react';
 import { Badge } from '../../components/Badge';
 import { Modal } from '../../components/Modal';
@@ -32,8 +38,24 @@ export const ParticipantsManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [pageSize, setPageSize] = useState<string>('50'); // '15', '50', '100', 'all'
+  const [sortBy, setSortBy] = useState<string>('original'); // 'original', 'name_asc', 'name_desc', 'email_asc', 'email_desc', 'status'
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState(''); // '', 'checked_in', 'not_checked_in'
+  const [statusFilter, setStatusFilter] = useState(''); // '', 'checked_in', 'not_checked_in', 'duplicates'
+  const [duplicatesSummary, setDuplicatesSummary] = useState<{
+    totalDuplicates: number;
+    duplicateEmailsCount: number;
+    duplicateNamesCount: number;
+    duplicateEmails: string[];
+    duplicateNames: string[];
+  }>({
+    totalDuplicates: 0,
+    duplicateEmailsCount: 0,
+    duplicateNamesCount: 0,
+    duplicateEmails: [],
+    duplicateNames: [],
+  });
 
   // Add Participant Form State
   const [showAddModal, setShowAddModal] = useState(false);
@@ -72,15 +94,20 @@ export const ParticipantsManagement: React.FC = () => {
     try {
       const query = new URLSearchParams({
         page: String(page),
-        limit: '15',
+        limit: pageSize,
         search,
         status: statusFilter,
+        sortBy,
       }).toString();
 
       const res = await apiRequest(`/participants/event/${eventId}?${query}`);
       if (res.success) {
         setParticipants(res.participants);
         setTotalPages(res.pagination.totalPages);
+        setTotalCount(res.pagination.total || 0);
+        if (res.duplicatesSummary) {
+          setDuplicatesSummary(res.duplicatesSummary);
+        }
       }
     } catch (err: any) {
       console.error('Error fetching participants:', err);
@@ -91,7 +118,7 @@ export const ParticipantsManagement: React.FC = () => {
 
   useEffect(() => {
     fetchParticipants();
-  }, [eventId, page, statusFilter]);
+  }, [eventId, page, statusFilter, pageSize, sortBy]);
 
   // Handle live search with debounce
   useEffect(() => {
@@ -421,70 +448,248 @@ export const ParticipantsManagement: React.FC = () => {
         </div>
       )}
 
-      {/* Search and Filters Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-[#11141c] border border-[#272d3f] rounded-2xl p-4">
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or email..."
-            className="w-full pl-10 pr-4 py-2 bg-[#171b26] border border-[#272d3f] rounded-xl text-white placeholder-slate-500 text-xs focus:outline-none focus:border-[#00e5ff]"
-          />
-        </div>
-
-        <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-          <div className="flex items-center gap-2 text-xs text-slate-400">
-            <Filter className="w-3.5 h-3.5" />
-            <span>Filter Status:</span>
+      {/* Duplicate Alert Banner */}
+      {duplicatesSummary.totalDuplicates > 0 && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 text-amber-300 shadow-lg animate-fadeIn">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 shrink-0">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="font-extrabold text-sm text-white flex items-center gap-2">
+                <span>{duplicatesSummary.totalDuplicates} Duplicate Record{duplicatesSummary.totalDuplicates > 1 ? 's' : ''} Identified</span>
+                <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 text-[10px] font-bold">Review Required</span>
+              </div>
+              <div className="text-xs text-amber-300/80 mt-0.5">
+                {duplicatesSummary.duplicateEmailsCount > 0 && (
+                  <span>
+                    <strong className="text-amber-200">{duplicatesSummary.duplicateEmailsCount}</strong> repeated email(s): {duplicatesSummary.duplicateEmails.slice(0, 3).join(', ')}{duplicatesSummary.duplicateEmails.length > 3 ? ` +${duplicatesSummary.duplicateEmails.length - 3} more` : ''}
+                  </span>
+                )}
+                {duplicatesSummary.duplicateEmailsCount > 0 && duplicatesSummary.duplicateNamesCount > 0 && ' • '}
+                {duplicatesSummary.duplicateNamesCount > 0 && (
+                  <span>
+                    <strong className="text-amber-200">{duplicatesSummary.duplicateNamesCount}</strong> repeated name(s): {duplicatesSummary.duplicateNames.slice(0, 3).join(', ')}{duplicatesSummary.duplicateNames.length > 3 ? ` +${duplicatesSummary.duplicateNames.length - 3} more` : ''}
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              setPage(1);
-            }}
-            className="bg-[#171b26] border border-[#272d3f] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#00e5ff]"
-          >
-            <option value="">All Attendees</option>
-            <option value="checked_in">Checked In Only (Yes)</option>
-            <option value="not_checked_in">Not Checked In Only (No)</option>
-          </select>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setStatusFilter(statusFilter === 'duplicates' ? '' : 'duplicates');
+                setPage(1);
+              }}
+              className={`px-3.5 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 ${
+                statusFilter === 'duplicates'
+                  ? 'bg-amber-400 text-black shadow-md shadow-amber-400/20 font-extrabold'
+                  : 'bg-[#171b26] border border-amber-500/40 text-amber-300 hover:bg-amber-500/20'
+              }`}
+            >
+              <AlertTriangle className="w-3.5 h-3.5" />
+              <span>{statusFilter === 'duplicates' ? '✓ Showing Duplicates (Click for All)' : 'Show Duplicates Only'}</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Search, Filters, Sorting & Scrollable View Bar */}
+      <div className="bg-[#11141c] border border-[#272d3f] rounded-2xl p-4 space-y-3">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+          {/* Search Bar */}
+          <div className="relative flex-1 max-w-md">
+            <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name or email..."
+              className="w-full pl-10 pr-4 py-2 bg-[#171b26] border border-[#272d3f] rounded-xl text-white placeholder-slate-500 text-xs focus:outline-none focus:border-[#00e5ff]"
+            />
+          </div>
+
+          {/* Controls: Filter, Sort & Scrollable Mode */}
+          <div className="flex flex-wrap items-center gap-2.5 justify-end text-xs">
+            {/* Filter Status */}
+            <div className="flex items-center gap-1.5 bg-[#171b26] border border-[#272d3f] rounded-xl px-2.5 py-1.5 text-slate-400">
+              <Filter className="w-3.5 h-3.5 text-[#00e5ff]" />
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setPage(1);
+                }}
+                className="bg-transparent text-white text-xs focus:outline-none cursor-pointer"
+              >
+                <option value="" className="bg-[#171b26]">All Attendees</option>
+                <option value="checked_in" className="bg-[#171b26]">Checked In Only (Yes)</option>
+                <option value="not_checked_in" className="bg-[#171b26]">Not Checked In (No)</option>
+                {duplicatesSummary.totalDuplicates > 0 && (
+                  <option value="duplicates" className="bg-[#171b26] text-amber-400 font-bold">
+                    ⚠️ Duplicates Only ({duplicatesSummary.totalDuplicates})
+                  </option>
+                )}
+              </select>
+            </div>
+
+            {/* Sort Arrangement: Default is Original Order */}
+            <div className="flex items-center gap-1.5 bg-[#171b26] border border-[#272d3f] rounded-xl px-2.5 py-1.5 text-slate-400">
+              <ListOrdered className="w-3.5 h-3.5 text-[#e6be6d]" />
+              <span className="text-slate-400 font-medium">Sort:</span>
+              <select
+                value={sortBy}
+                onChange={(e) => {
+                  setSortBy(e.target.value);
+                  setPage(1);
+                }}
+                className="bg-transparent text-white text-xs focus:outline-none cursor-pointer font-bold"
+              >
+                <option value="original" className="bg-[#171b26] text-[#00e5ff]">
+                  Original Order (As Uploaded)
+                </option>
+                <option value="name_asc" className="bg-[#171b26]">Name (A &rarr; Z)</option>
+                <option value="name_desc" className="bg-[#171b26]">Name (Z &rarr; A)</option>
+                <option value="email_asc" className="bg-[#171b26]">Email (A &rarr; Z)</option>
+                <option value="email_desc" className="bg-[#171b26]">Email (Z &rarr; A)</option>
+                <option value="status" className="bg-[#171b26]">Attendance (Attended First)</option>
+                <option value="newest" className="bg-[#171b26]">Newest First</option>
+              </select>
+            </div>
+
+            {/* View Size / Scrollable Mode Selector */}
+            <div className="flex items-center gap-1.5 bg-[#171b26] border border-[#272d3f] rounded-xl px-2.5 py-1.5 text-slate-400">
+              <Layers className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="text-slate-400 font-medium">View:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(e.target.value);
+                  setPage(1);
+                }}
+                className="bg-transparent text-white text-xs focus:outline-none cursor-pointer font-bold"
+              >
+                <option value="15" className="bg-[#171b26]">15 per page</option>
+                <option value="50" className="bg-[#171b26]">50 per page</option>
+                <option value="100" className="bg-[#171b26]">100 per page</option>
+                <option value="all" className="bg-[#171b26] text-emerald-400 font-bold">
+                  All (Scrollable)
+                </option>
+              </select>
+            </div>
+
+            {/* Reset to Original Order shortcut */}
+            {sortBy !== 'original' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSortBy('original');
+                  setPage(1);
+                }}
+                className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-[#00e5ff]/10 text-[#00e5ff] border border-[#00e5ff]/30 hover:bg-[#00e5ff]/20 transition-all"
+                title="Reset arrangement to original uploaded order"
+              >
+                Reset to Original Order
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Participants Table */}
+      {/* Participants Table Container */}
       <div className="bg-[#11141c] border border-[#272d3f] rounded-2xl overflow-hidden shadow-xl">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-h-[620px] overflow-y-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-[#171b26] border-b border-[#272d3f] text-slate-400 uppercase tracking-wider font-bold">
+            <thead className="bg-[#171b26] border-b border-[#272d3f] text-slate-400 uppercase tracking-wider font-bold sticky top-0 z-10 shadow-md">
               <tr>
-                <th className="py-3.5 px-4">Name</th>
-                <th className="py-3.5 px-4">Email &amp; QR Pass</th>
-                <th className="py-3.5 px-4">Ticket Email Status</th>
-                <th className="py-3.5 px-4">Attendance Status</th>
+                <th
+                  onClick={() => setSortBy('original')}
+                  className="py-3.5 px-3 w-12 text-center cursor-pointer hover:text-[#00e5ff] transition-colors"
+                  title="Click to sort by Original Order"
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span>#</span>
+                    {sortBy === 'original' && <span className="text-[#00e5ff] text-[10px]">&bull;</span>}
+                  </div>
+                </th>
+                <th
+                  onClick={() => setSortBy(sortBy === 'name_asc' ? 'name_desc' : 'name_asc')}
+                  className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>Name</span>
+                    <ArrowUpDown className="w-3 h-3 opacity-60" />
+                  </div>
+                </th>
+                <th
+                  onClick={() => setSortBy(sortBy === 'email_asc' ? 'email_desc' : 'email_asc')}
+                  className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>Email &amp; QR Pass</span>
+                    <ArrowUpDown className="w-3 h-3 opacity-60" />
+                  </div>
+                </th>
+                <th className="py-3.5 px-4">Ticket Status</th>
+                <th
+                  onClick={() => setSortBy(sortBy === 'status' ? 'original' : 'status')}
+                  className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>Attendance Status</span>
+                    <ArrowUpDown className="w-3 h-3 opacity-60" />
+                  </div>
+                </th>
                 <th className="py-3.5 px-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#272d3f]/60 text-slate-300">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center text-slate-500">
+                  <td colSpan={6} className="py-12 text-center text-slate-500">
                     <div className="w-8 h-8 border-2 border-[#00e5ff] border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
                     Loading attendee registrations...
                   </td>
                 </tr>
               ) : participants.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center text-slate-500">
+                  <td colSpan={6} className="py-12 text-center text-slate-500">
                     No participants found matching the current search/filter.
                   </td>
                 </tr>
               ) : (
-                participants.map((p) => (
-                  <tr key={p.id} className="hover:bg-[#171b26]/50 transition-colors">
-                    <td className="py-3.5 px-4 font-bold text-white">{p.name}</td>
+                participants.map((p, idx) => (
+                  <tr
+                    key={p.id}
+                    className={`transition-colors ${
+                      p.isDuplicate
+                        ? 'bg-amber-500/[0.08] hover:bg-amber-500/[0.14] border-l-4 border-l-amber-400'
+                        : 'hover:bg-[#171b26]/50'
+                    }`}
+                  >
+                    <td className="py-3.5 px-3 text-center text-slate-500 font-mono text-[11px]">
+                      {p.originalIndex || (page - 1) * (pageSize === 'all' ? 0 : parseInt(pageSize)) + idx + 1}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-white text-sm">{p.name}</span>
+                        {p.isDuplicate && (
+                          <span
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-extrabold uppercase tracking-wide"
+                            title={p.duplicateReasons?.join(' • ')}
+                          >
+                            <AlertTriangle className="w-3 h-3 text-amber-400" />
+                            <span>Duplicate</span>
+                          </span>
+                        )}
+                      </div>
+                      {p.isDuplicate && (
+                        <div className="text-[11px] font-medium text-amber-400/90 mt-0.5">
+                          {p.duplicateReasons?.join(' • ')}
+                        </div>
+                      )}
+                    </td>
                     <td className="py-3.5 px-4 text-slate-400 font-mono text-[11px]">
                       <div className="flex items-center gap-2">
                         <span>{p.email}</span>
@@ -558,28 +763,50 @@ export const ParticipantsManagement: React.FC = () => {
           </table>
         </div>
 
-        {/* Pagination footer */}
-        <div className="px-4 py-3 bg-[#171b26] border-t border-[#272d3f] flex items-center justify-between text-xs text-slate-400">
-          <div>
-            Page <span className="text-white font-bold">{page}</span> of{' '}
-            <span className="text-white font-bold">{totalPages}</span>
-          </div>
+        {/* Pagination & Scrollable Info footer */}
+        <div className="px-4 py-3 bg-[#171b26] border-t border-[#272d3f] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-              className="px-3 py-1.5 bg-[#11141c] border border-[#272d3f] rounded-lg disabled:opacity-40 hover:text-white"
-            >
-              Previous
-            </button>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-              className="px-3 py-1.5 bg-[#11141c] border border-[#272d3f] rounded-lg disabled:opacity-40 hover:text-white"
-            >
-              Next
-            </button>
+            <span>
+              Showing <strong className="text-white">{participants.length}</strong> of{' '}
+              <strong className="text-white">{totalCount}</strong> attendees
+            </span>
+            <span className="text-slate-500">&bull;</span>
+            <span className="text-[#00e5ff] font-medium">
+              {sortBy === 'original'
+                ? 'Arranged in Original Upload Order'
+                : `Sorted: ${sortBy}`}
+            </span>
           </div>
+
+          {pageSize !== 'all' && totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <span className="mr-2">
+                Page <strong className="text-white">{page}</strong> of{' '}
+                <strong className="text-white">{totalPages}</strong>
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="px-3 py-1.5 bg-[#11141c] border border-[#272d3f] rounded-lg disabled:opacity-40 hover:text-white transition-colors"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="px-3 py-1.5 bg-[#11141c] border border-[#272d3f] rounded-lg disabled:opacity-40 hover:text-white transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          )}
+
+          {pageSize === 'all' && (
+            <div className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Full Scrollable Mode Active &bull; Scroll up/down freely</span>
+            </div>
+          )}
         </div>
       </div>
 

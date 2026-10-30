@@ -149,7 +149,10 @@ export const getEventAttendance = async (req: Request, res: Response): Promise<v
     const search = (req.query.search as string) || '';
     const statusFilter = (req.query.status as string) || ''; // 'Yes', 'No'
     const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 50;
+    const limitQuery = req.query.limit as string;
+    const isScrollableAll = limitQuery === 'all' || parseInt(limitQuery) >= 5000;
+    const limit = isScrollableAll ? 5000 : (parseInt(limitQuery) || 50);
+    const sortBy = (req.query.sortBy as string) || 'original';
 
     if (!mongoose.Types.ObjectId.isValid(eventId)) {
       res.status(400).json({ success: false, message: 'Invalid Event ID.' });
@@ -189,9 +192,19 @@ export const getEventAttendance = async (req: Request, res: Response): Promise<v
     const countResult = await EventRegistration.aggregate(countPipeline);
     const total = countResult.length > 0 ? countResult[0].total : 0;
 
-    pipeline.push({ $sort: { 'participant.name': 1 } });
-    pipeline.push({ $skip: (page - 1) * limit });
-    pipeline.push({ $limit: limit });
+    // Sorting: default to original order ({ createdAt: 1, _id: 1 })
+    if (sortBy === 'name') {
+      pipeline.push({ $sort: { 'participant.name': 1 } });
+    } else if (sortBy === 'status') {
+      pipeline.push({ $sort: { attendanceStatus: -1, createdAt: 1 } });
+    } else {
+      pipeline.push({ $sort: { createdAt: 1, _id: 1 } });
+    }
+
+    if (!isScrollableAll) {
+      pipeline.push({ $skip: (page - 1) * limit });
+      pipeline.push({ $limit: limit });
+    }
 
     const records = await EventRegistration.aggregate(pipeline);
 

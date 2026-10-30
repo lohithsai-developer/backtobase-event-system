@@ -116,9 +116,11 @@ export const previewImport = async (req: Request, res: Response): Promise<void> 
     }
 
     // Determine column keys (case-insensitive for Name and Email)
-    const previewList: { name: string; email: string; isValid: boolean; error?: string }[] = [];
+    const previewList: { name: string; email: string; isValid: boolean; isDuplicate?: boolean; error?: string }[] = [];
     let validCount = 0;
     let invalidCount = 0;
+    let duplicateInFileCount = 0;
+    const seenEmails = new Set<string>();
 
     for (let i = 0; i < Math.min(rows.length, 100); i++) {
       const row = rows[i];
@@ -134,7 +136,12 @@ export const previewImport = async (req: Request, res: Response): Promise<void> 
       } else if (!validateEmail(email)) {
         previewList.push({ name, email, isValid: false, error: 'Invalid email syntax' });
         invalidCount++;
+      } else if (seenEmails.has(email)) {
+        previewList.push({ name, email, isValid: false, isDuplicate: true, error: 'Duplicate email in uploaded file' });
+        duplicateInFileCount++;
+        invalidCount++;
       } else {
+        seenEmails.add(email);
         previewList.push({ name, email, isValid: true });
         validCount++;
       }
@@ -146,6 +153,7 @@ export const previewImport = async (req: Request, res: Response): Promise<void> 
       samplePreview: previewList,
       validCount,
       invalidCount,
+      duplicateInFileCount,
     });
   } catch (error) {
     logger.error('Error previewing import file:', error);
@@ -296,17 +304,55 @@ export const getEventParticipants = async (req: Request, res: Response): Promise
   try {
     const { eventId } = req.params;
     const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 20;
+    const limitQuery = req.query.limit as string;
+    const isScrollableAll = limitQuery === 'all' || parseInt(limitQuery) >= 5000;
+    const limit = isScrollableAll ? 5000 : (parseInt(limitQuery) || 20);
     const search = (req.query.search as string) || '';
-    const statusFilter = (req.query.status as string) || ''; // 'checked_in', 'not_checked_in'
+    const statusFilter = (req.query.status as string) || ''; // 'checked_in', 'not_checked_in', 'duplicates'
+    const sortBy = (req.query.sortBy as string) || 'original'; // 'original', 'name_asc', 'name_desc', 'email_asc', 'email_desc', 'status', 'newest'
 
     if (!mongoose.Types.ObjectId.isValid(eventId)) {
       res.status(400).json({ success: false, message: 'Invalid Event ID.' });
       return;
     }
 
-    const matchQuery: any = { eventId: new mongoose.Types.ObjectId(eventId) };
-    if (statusFilter && ['checked_in', 'not_checked_in'].includes(statusFilter)) {
+    const eventObjectId = new mongoose.Types.ObjectId(eventId);
+
+    // 1. Calculate duplicates across ALL registrations for this event
+    const allEventRegs = await EventRegistration.find({ eventId: eventObjectId })
+      .populate<{ participantId: { name: string; email: string } }>('participantId', 'name email')
+      .lean();
+
+    const emailCounts = new Map<string, number>();
+    const nameCounts = new Map<string, number>();
+    const duplicateEmailList: string[] = [];
+    const duplicateNameList: string[] = [];
+
+    allEventRegs.forEach((reg: any) => {
+      if (reg.participantId) {
+        const em = (reg.participantId.email || '').trim().toLowerCase();
+        const nm = (reg.participantId.name || '').trim().toLowerCase();
+        if (em) {
+          const c = (emailCounts.get(em) || 0) + 1;
+          emailCounts.set(em, c);
+        }
+        if (nm) {
+          const c = (nameCounts.get(nm) || 0) + 1;
+          nameCounts.set(nm, c);
+        }
+      }
+    });
+
+    emailCounts.forEach((count, email) => {
+      if (count > 1) duplicateEmailList.push(email);
+    });
+    nameCounts.forEach((count, name) => {
+      if (count > 1) duplicateNameList.push(name);
+    });
+
+    // 2. Query Pipeline
+    const matchQuery: any = { eventId: eventObjectId };
+    if (statusFilter === 'checked_in' || statusFilter === 'not_checked_in') {
       matchQuery.attendanceStatus = statusFilter;
     }
 
@@ -332,39 +378,97 @@ export const getEventParticipants = async (req: Request, res: Response): Promise
       });
     }
 
+    // Filter duplicates only if selected
+    if (statusFilter === 'duplicates') {
+      const lowerNameRegexes = duplicateNameList.map((n) => new RegExp(`^${n}$`, 'i'));
+      pipeline.push({
+        $match: {
+          $or: [
+            { 'participant.email': { $in: duplicateEmailList } },
+            ...(lowerNameRegexes.length > 0 ? [{ 'participant.name': { $in: lowerNameRegexes } }] : []),
+          ],
+        },
+      });
+    }
+
     // Count total matching
     const countPipeline = [...pipeline, { $count: 'total' }];
     const countResult = await EventRegistration.aggregate(countPipeline);
     const total = countResult.length > 0 ? countResult[0].total : 0;
 
-    // Sorting and pagination
-    pipeline.push({ $sort: { createdAt: -1 } });
-    pipeline.push({ $skip: (page - 1) * limit });
-    pipeline.push({ $limit: limit });
+    // Sorting: default is strictly ORIGINAL ORDER ({ createdAt: 1, _id: 1 })
+    if (sortBy === 'name_asc') {
+      pipeline.push({ $sort: { 'participant.name': 1 } });
+    } else if (sortBy === 'name_desc') {
+      pipeline.push({ $sort: { 'participant.name': -1 } });
+    } else if (sortBy === 'email_asc') {
+      pipeline.push({ $sort: { 'participant.email': 1 } });
+    } else if (sortBy === 'email_desc') {
+      pipeline.push({ $sort: { 'participant.email': -1 } });
+    } else if (sortBy === 'status') {
+      pipeline.push({ $sort: { attendanceStatus: -1, createdAt: 1 } });
+    } else if (sortBy === 'newest') {
+      pipeline.push({ $sort: { createdAt: -1 } });
+    } else {
+      // Default: 'original' -> original registration order
+      pipeline.push({ $sort: { createdAt: 1, _id: 1 } });
+    }
+
+    if (!isScrollableAll) {
+      pipeline.push({ $skip: (page - 1) * limit });
+      pipeline.push({ $limit: limit });
+    }
 
     const registrations = await EventRegistration.aggregate(pipeline);
 
-    const formattedParticipants = registrations.map((r) => ({
-      id: r._id,
-      registrationId: r.registrationId,
-      name: r.participant.name,
-      email: r.participant.email,
-      ticketEmailStatus: r.emailStatus,
-      attendanceStatus: r.attendanceStatus === 'checked_in' ? 'Yes' : 'No',
-      rawAttendanceStatus: r.attendanceStatus,
-      checkedInAt: r.checkedInAt,
-      ticketVersion: r.ticketVersion,
-      createdAt: r.createdAt,
-    }));
+    const formattedParticipants = registrations.map((r, idx) => {
+      const pEmail = (r.participant?.email || '').trim().toLowerCase();
+      const pName = (r.participant?.name || '').trim().toLowerCase();
+      const emailCount = emailCounts.get(pEmail) || 1;
+      const nameCount = nameCounts.get(pName) || 1;
+      const isDupEmail = emailCount > 1;
+      const isDupName = nameCount > 1;
+      const isDuplicate = isDupEmail || isDupName;
+
+      const dupReasons: string[] = [];
+      if (isDupEmail) dupReasons.push(`Duplicate Email (${emailCount} times)`);
+      if (isDupName) dupReasons.push(`Duplicate Name (${nameCount} times)`);
+
+      return {
+        id: r._id,
+        registrationId: r.registrationId,
+        originalIndex: (page - 1) * (isScrollableAll ? 0 : limit) + idx + 1,
+        name: r.participant?.name || 'Unknown',
+        email: r.participant?.email || '',
+        ticketEmailStatus: r.emailStatus,
+        attendanceStatus: r.attendanceStatus === 'checked_in' ? 'Yes' : 'No',
+        rawAttendanceStatus: r.attendanceStatus,
+        checkedInAt: r.checkedInAt,
+        ticketVersion: r.ticketVersion,
+        createdAt: r.createdAt,
+        isDuplicate,
+        isDuplicateEmail: isDupEmail,
+        isDuplicateName: isDupName,
+        duplicateReasons: dupReasons,
+      };
+    });
 
     res.json({
       success: true,
       participants: formattedParticipants,
+      duplicatesSummary: {
+        totalDuplicates: duplicateEmailList.length + duplicateNameList.length,
+        duplicateEmailsCount: duplicateEmailList.length,
+        duplicateNamesCount: duplicateNameList.length,
+        duplicateEmails: duplicateEmailList,
+        duplicateNames: duplicateNameList,
+      },
       pagination: {
-        page,
+        page: isScrollableAll ? 1 : page,
         limit,
         total,
-        totalPages: Math.ceil(total / limit) || 1,
+        totalPages: isScrollableAll ? 1 : (Math.ceil(total / limit) || 1),
+        isScrollableAll,
       },
     });
   } catch (error) {

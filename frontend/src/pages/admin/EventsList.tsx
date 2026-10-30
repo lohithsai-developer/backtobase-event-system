@@ -33,6 +33,63 @@ export const EventsList: React.FC = () => {
     action: null,
   });
 
+  // Edit event modal state
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<any | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editDate, setEditDate] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  const handleOpenEdit = (evt: any) => {
+    setEditingEvent(evt);
+    setEditName(evt.name || '');
+    setEditDescription(evt.description || '');
+    const d = new Date(evt.date);
+    const dateStr = !isNaN(d.getTime()) ? d.toISOString().split('T')[0] : '';
+    setEditDate(dateStr);
+    setEditError(null);
+    setEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingEvent) return;
+    if (!editName.trim() || !editDescription.trim() || !editDate) {
+      setEditError('Please fill in all fields (name, description, and date).');
+      return;
+    }
+    setEditSaving(true);
+    setEditError(null);
+    try {
+      const res = await apiRequest(`/events/${editingEvent.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: editName.trim(),
+          description: editDescription.trim(),
+          date: editDate,
+        }),
+      });
+      if (res.success) {
+        setEvents((prev) =>
+          prev.map((e) =>
+            e.id === editingEvent.id
+              ? { ...e, name: editName.trim(), description: editDescription.trim(), date: editDate }
+              : e
+          )
+        );
+        setEditModalOpen(false);
+      } else {
+        setEditError(res.message || 'Failed to update event.');
+      }
+    } catch (err: any) {
+      setEditError(err.message || 'Failed to update event details.');
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   const loadEvents = async () => {
     try {
       const data = await apiRequest('/events');
@@ -240,7 +297,16 @@ export const EventsList: React.FC = () => {
                     </button>
                   </div>
 
-                  <div className="flex items-center justify-end gap-3 pt-2 border-t border-[#272d3f]/60 text-xs">
+                  <div className="flex items-center justify-between gap-3 pt-2 border-t border-[#272d3f]/60 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEdit(event)}
+                      className="text-slate-400 hover:text-[#00e5ff] flex items-center gap-1.5 transition-colors font-medium"
+                    >
+                      <Edit2 className="w-3.5 h-3.5 text-[#00e5ff]" />
+                      <span>Edit Details</span>
+                    </button>
+
                     <button
                       onClick={() =>
                         setConfirmModal({
@@ -318,6 +384,86 @@ export const EventsList: React.FC = () => {
             </button>
           </div>
         </div>
+      </Modal>
+
+      {/* Edit Event Details Modal */}
+      <Modal
+        isOpen={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        title="Edit Event Details"
+      >
+        <form onSubmit={handleSaveEdit} className="space-y-4">
+          {editError && (
+            <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400 text-xs">
+              {editError}
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+              Event Name
+            </label>
+            <input
+              type="text"
+              required
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              className="w-full bg-[#11141c] border border-[#272d3f] focus:border-[#00e5ff] rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none transition-colors"
+              placeholder="e.g. BacktoBase Legends Upgrade 2026"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+              Event Description
+            </label>
+            <textarea
+              required
+              rows={4}
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+              className="w-full bg-[#11141c] border border-[#272d3f] focus:border-[#00e5ff] rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none transition-colors resize-none"
+              placeholder="Provide a detailed description of the event..."
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+              Event Date
+            </label>
+            <input
+              type="date"
+              required
+              value={editDate}
+              onChange={(e) => setEditDate(e.target.value)}
+              className="w-full bg-[#11141c] border border-[#272d3f] focus:border-[#00e5ff] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none transition-colors"
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#272d3f]">
+            <button
+              type="button"
+              onClick={() => setEditModalOpen(false)}
+              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-[#1f2433] transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={editSaving}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-black bg-[#00e5ff] hover:bg-[#33ebff] transition-all shadow-md shadow-[#00e5ff]/20 disabled:opacity-50"
+            >
+              {editSaving ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <span>Save Changes</span>
+              )}
+            </button>
+          </div>
+        </form>
       </Modal>
     </div>
   );

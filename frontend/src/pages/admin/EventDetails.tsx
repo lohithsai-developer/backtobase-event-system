@@ -14,15 +14,25 @@ import {
   Mail,
   UserPlus,
   TrendingUp,
+  Edit3,
 } from 'lucide-react';
 import { StatCard } from '../../components/StatCard';
 import { Badge } from '../../components/Badge';
+import { Modal } from '../../components/Modal';
 
 export const EventDetails: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>();
   const [event, setEvent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [statusLoading, setStatusLoading] = useState(false);
+
+  // Edit details modal state
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editDate, setEditDate] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const navigate = useNavigate();
 
@@ -59,6 +69,52 @@ export const EventDetails: React.FC = () => {
       alert(err.message || 'Failed to toggle event status');
     } finally {
       setStatusLoading(false);
+    }
+  };
+
+  const handleOpenEdit = () => {
+    if (!event) return;
+    setEditName(event.name || '');
+    setEditDescription(event.description || '');
+    const d = new Date(event.date);
+    const dateStr = !isNaN(d.getTime()) ? d.toISOString().split('T')[0] : '';
+    setEditDate(dateStr);
+    setEditError(null);
+    setEditModalOpen(true);
+  };
+
+  const handleSaveEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editName.trim() || !editDescription.trim() || !editDate) {
+      setEditError('Please fill in all fields (name, description, and date).');
+      return;
+    }
+    setEditSaving(true);
+    setEditError(null);
+    try {
+      const res = await apiRequest(`/events/${event.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: editName.trim(),
+          description: editDescription.trim(),
+          date: editDate,
+        }),
+      });
+      if (res.success) {
+        setEvent((prev: any) => ({
+          ...prev,
+          name: editName.trim(),
+          description: editDescription.trim(),
+          date: editDate,
+        }));
+        setEditModalOpen(false);
+      } else {
+        setEditError(res.message || 'Failed to update event.');
+      }
+    } catch (err: any) {
+      setEditError(err.message || 'Failed to update event details.');
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -124,8 +180,18 @@ export const EventDetails: React.FC = () => {
             </div>
           </div>
 
-          {/* Activation Control */}
-          <div className="shrink-0 flex items-center gap-3">
+          {/* Controls: Edit Details & Activation */}
+          <div className="shrink-0 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={handleOpenEdit}
+              className="flex items-center gap-2 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider bg-[#171b26] hover:bg-[#202636] text-white border border-[#272d3f] hover:border-[#00e5ff] hover:text-[#00e5ff] transition-all shadow-md active:scale-95"
+              title="Edit event name, description, and date"
+            >
+              <Edit3 className="w-4 h-4 text-[#00e5ff]" />
+              <span>Edit Details</span>
+            </button>
+
             <button
               onClick={handleToggleStatus}
               disabled={statusLoading}
@@ -236,6 +302,86 @@ export const EventDetails: React.FC = () => {
           </div>
         </Link>
       </div>
+
+      {/* Edit Event Details Modal */}
+      <Modal
+        isOpen={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        title="Edit Event Details"
+      >
+        <form onSubmit={handleSaveEvent} className="space-y-4">
+          {editError && (
+            <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400 text-xs">
+              {editError}
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+              Event Name
+            </label>
+            <input
+              type="text"
+              required
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              className="w-full bg-[#11141c] border border-[#272d3f] focus:border-[#00e5ff] rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none transition-colors"
+              placeholder="e.g. BacktoBase Legends Upgrade 2026"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+              Event Description
+            </label>
+            <textarea
+              required
+              rows={4}
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+              className="w-full bg-[#11141c] border border-[#272d3f] focus:border-[#00e5ff] rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none transition-colors resize-none"
+              placeholder="Provide a detailed description of the event..."
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+              Event Date
+            </label>
+            <input
+              type="date"
+              required
+              value={editDate}
+              onChange={(e) => setEditDate(e.target.value)}
+              className="w-full bg-[#11141c] border border-[#272d3f] focus:border-[#00e5ff] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none transition-colors"
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#272d3f]">
+            <button
+              type="button"
+              onClick={() => setEditModalOpen(false)}
+              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-[#1f2433] transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={editSaving}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-black bg-[#00e5ff] hover:bg-[#33ebff] transition-all shadow-md shadow-[#00e5ff]/20 disabled:opacity-50"
+            >
+              {editSaving ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <span>Save Changes</span>
+              )}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

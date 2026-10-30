@@ -107,7 +107,19 @@ export const VolunteerScanner: React.FC = () => {
 
   useEffect(() => {
     fetchActiveEvent();
+    const interval = setInterval(fetchActiveEvent, 3500);
+    return () => clearInterval(interval);
   }, []);
+
+  // Directly open camera scanner on page load without requiring the user to click any button
+  useEffect(() => {
+    if (viewMode === 'camera' && !scannerStarted) {
+      const timer = setTimeout(() => {
+        startScanner();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [viewMode, scannerStarted]);
 
   // Volunteer manual check-in toggle from roster
   const handleToggleAttendee = async (regId: string) => {
@@ -553,13 +565,23 @@ export const VolunteerScanner: React.FC = () => {
                 .filter(
                   (p: any) =>
                     p.name.toLowerCase().includes(rosterSearch.toLowerCase()) ||
-                    p.email.toLowerCase().includes(rosterSearch.toLowerCase())
+                    (p.email && p.email.toLowerCase().includes(rosterSearch.toLowerCase()))
                 )
                 .map((p: any) => (
-                  <div key={p.id} className="py-2.5 flex items-center justify-between gap-2">
+                  <div key={p.id} className="py-3 px-1 flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="font-bold text-white text-xs truncate">{p.name}</div>
-                      <div className="text-[11px] text-slate-400 font-mono truncate">{p.email}</div>
+                      <div className="font-extrabold text-white text-sm truncate">{p.name}</div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {p.isCheckedIn ? (
+                          <span className="text-[11px] font-bold text-emerald-400">
+                            Attended &bull; {p.checkedInAt ? new Date(p.checkedInAt).toLocaleTimeString() : 'Checked In'}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] font-medium text-slate-400">
+                            Not Attended
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <button
                       type="button"
@@ -574,12 +596,12 @@ export const VolunteerScanner: React.FC = () => {
                       {p.isCheckedIn ? (
                         <>
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Checked In (Undo)</span>
+                          <span>Attended (Undo)</span>
                         </>
                       ) : (
                         <>
                           <UserCheck className="w-3.5 h-3.5" />
-                          <span>Mark Entry</span>
+                          <span>Mark Attended</span>
                         </>
                       )}
                     </button>
@@ -617,14 +639,11 @@ export const VolunteerScanner: React.FC = () => {
                 <h3 className="text-2xl font-black text-emerald-400 tracking-tight">
                   ATTENDANCE MARKED!
                 </h3>
-                <p className="text-xl font-extrabold text-white mt-2">
+                <p className="text-2xl font-extrabold text-white mt-2">
                   {scanResult.participantName}
                 </p>
-                <p className="text-xs text-emerald-300/80 mt-0.5 font-mono">
-                  {scanResult.participantEmail}
-                </p>
                 <div className="mt-4 pt-3 border-t border-emerald-500/30 text-xs font-semibold text-emerald-300">
-                  Gate entry recorded at {new Date(scanResult.checkedInAt).toLocaleTimeString()}
+                  Event Checked In: Admitted at {new Date(scanResult.checkedInAt).toLocaleTimeString()}
                 </div>
               </div>
             )}
@@ -637,14 +656,11 @@ export const VolunteerScanner: React.FC = () => {
                 <h3 className="text-2xl font-black text-amber-400 tracking-tight">
                   ALREADY CHECKED IN
                 </h3>
-                <p className="text-xl font-extrabold text-white mt-2">
+                <p className="text-2xl font-extrabold text-white mt-2">
                   {scanResult.participantName}
                 </p>
-                <p className="text-xs text-amber-300/80 mt-0.5 font-mono">
-                  {scanResult.participantEmail}
-                </p>
                 <div className="mt-4 pt-3 border-t border-amber-500/30 text-xs text-amber-300">
-                  Already admitted at{' '}
+                  Event Checked In: Already admitted at{' '}
                   <span className="font-bold text-white">
                     {scanResult.checkedInAt
                       ? new Date(scanResult.checkedInAt).toLocaleTimeString()

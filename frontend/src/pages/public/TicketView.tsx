@@ -36,24 +36,64 @@ export const TicketView: React.FC = () => {
     };
   }, []);
 
+  // Real-time live check-in polling: updates automatically without refreshing the screen
   useEffect(() => {
-    const fetchTicket = async () => {
+    let isMounted = true;
+
+    const fetchTicket = async (isInitial = false) => {
       if (!token) return;
       try {
         const data = await apiRequest(`/tickets/public/${token}`);
+        if (!isMounted) return;
         if (data.success && data.ticket) {
-          setTicket(data.ticket);
-        } else {
+          setTicket((prevTicket: any) => {
+            // If participant just got scanned, play audio chime
+            if (prevTicket && !prevTicket.isCheckedIn && data.ticket.isCheckedIn) {
+              try {
+                const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+                if (AudioCtx) {
+                  const ctx = new AudioCtx();
+                  const osc = ctx.createOscillator();
+                  const gain = ctx.createGain();
+                  osc.connect(gain);
+                  gain.connect(ctx.destination);
+                  osc.type = 'sine';
+                  osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+                  osc.frequency.setValueAtTime(880, ctx.currentTime + 0.1);
+                  gain.gain.setValueAtTime(0.25, ctx.currentTime);
+                  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+                  osc.start();
+                  osc.stop(ctx.currentTime + 0.35);
+                }
+              } catch (_) {}
+            }
+            return data.ticket;
+          });
+        } else if (isInitial) {
           setError(data.message || 'Pass could not be loaded.');
         }
       } catch (err: any) {
-        setError(err.message || 'Ticket pass could not be loaded or has expired.');
+        if (isInitial) {
+          setError(err.message || 'Ticket pass could not be loaded or has expired.');
+        }
       } finally {
-        setLoading(false);
+        if (isInitial && isMounted) {
+          setLoading(false);
+        }
       }
     };
 
-    fetchTicket();
+    fetchTicket(true);
+
+    // Live update interval: continuously check for entrance scan every 2 seconds
+    const interval = setInterval(() => {
+      fetchTicket(false);
+    }, 2000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, [token]);
 
   const handleDownloadQr = () => {
@@ -176,7 +216,7 @@ export const TicketView: React.FC = () => {
             />
           </div>
           <p className="text-[11px] font-semibold text-slate-400 text-center mt-3 uppercase tracking-wider">
-            Present this QR code at the check-in gate
+            Present this QR code for event check-in
           </p>
         </div>
 
@@ -206,8 +246,8 @@ export const TicketView: React.FC = () => {
             <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-3.5 flex items-center gap-3 text-emerald-400 text-xs">
               <CheckCircle2 className="w-5 h-5 shrink-0" />
               <div>
-                <span className="font-bold">Gate Entry Recorded:</span> Admitted at{' '}
-                {ticket.checkedInAt ? new Date(ticket.checkedInAt).toLocaleTimeString() : 'the entrance gate'}.
+                <span className="font-bold">Event Checked In:</span> Admitted at{' '}
+                {ticket.checkedInAt ? new Date(ticket.checkedInAt).toLocaleTimeString() : 'the event entrance'}.
               </div>
             </div>
           )}
@@ -230,7 +270,7 @@ export const TicketView: React.FC = () => {
       </div>
 
       <div className="mt-4 text-center text-xs text-slate-500 max-w-xs">
-        Keep this pass handy on your mobile phone for swift gate check-in.
+        Keep this pass handy on your mobile phone for event check-in.
       </div>
     </div>
   );

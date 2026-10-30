@@ -21,7 +21,6 @@ import {
   Search,
   UserCheck,
   RotateCcw,
-  Zap,
   Volume2,
   Square,
   Crosshair,
@@ -41,7 +40,6 @@ export const VolunteerScanner: React.FC = () => {
 
   // Scanner state
   const [viewMode, setViewMode] = useState<'camera' | 'roster'>('camera');
-  const [scanMode, setScanMode] = useState<'manual' | 'auto'>('manual');
   const [rosterSearch, setRosterSearch] = useState<string>('');
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [scannerStarted, setScannerStarted] = useState<boolean>(false);
@@ -229,21 +227,10 @@ export const VolunteerScanner: React.FC = () => {
     detectedTokenRef.current = token;
     setDetectedCode(token);
 
-    if (scanMode === 'manual') {
-      // In manual mode, we DO NOT automatically submit!
-      // Only if the user previously pressed "Scan QR Now" (isCaptureArmed) do we capture it:
-      if (isCaptureArmedRef.current) {
-        isCaptureArmedRef.current = false;
-        setIsCaptureArmed(false);
-        handleProcessToken(token);
-      }
-    } else {
-      // Auto-Scan mode: continuous with duplicate guard
-      if (lastProcessedTokenRef.current === token) {
-        // Prevent continuous rescan of the exact same pass!
-        return;
-      }
-      if (isScanningLockedRef.current) return;
+    // Controlled Tap-to-Scan: only if volunteer has armed capture do we proceed automatically
+    if (isCaptureArmedRef.current) {
+      isCaptureArmedRef.current = false;
+      setIsCaptureArmed(false);
       handleProcessToken(token);
     }
   };
@@ -736,34 +723,6 @@ export const VolunteerScanner: React.FC = () => {
               scanResult ? 'hidden' : 'block'
             }`}
           >
-            {/* Mode Selector: Tap to Scan vs Auto Scan */}
-            <div className="w-full flex items-center justify-between gap-2 p-1.5 bg-[#0e1017] border border-[#272d3f] rounded-2xl mb-4 text-xs font-bold">
-              <button
-                type="button"
-                onClick={() => setScanMode('manual')}
-                className={`flex-1 py-1.5 px-2 rounded-xl flex items-center justify-center gap-1.5 transition-all ${
-                  scanMode === 'manual'
-                    ? 'bg-[#00e5ff] text-black shadow-md shadow-[#00e5ff]/20'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Crosshair className="w-3.5 h-3.5" />
-                <span>Tap to Scan (Controlled)</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setScanMode('auto')}
-                className={`flex-1 py-1.5 px-2 rounded-xl flex items-center justify-center gap-1.5 transition-all ${
-                  scanMode === 'auto'
-                    ? 'bg-amber-400 text-black shadow-md shadow-amber-400/20'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Zap className="w-3.5 h-3.5" />
-                <span>Auto-Scan (Continuous)</span>
-              </button>
-            </div>
-
             {/* Video Viewfinder Box */}
             <div
               id={scannerContainerId}
@@ -821,40 +780,29 @@ export const VolunteerScanner: React.FC = () => {
 
             {scannerStarted && (
               <div className="w-full mt-4 space-y-2">
-                {scanMode === 'manual' ? (
-                  <button
-                    type="button"
-                    onClick={handleManualCaptureClick}
-                    className={`w-full py-3.5 px-4 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 transition-all ${
-                      detectedCode
-                        ? 'bg-emerald-400 hover:bg-emerald-300 text-black shadow-lg shadow-emerald-500/30 animate-pulse'
-                        : isCaptureArmed
-                        ? 'bg-amber-400 text-black shadow-lg shadow-amber-400/30'
-                        : 'bg-[#00e5ff] hover:bg-[#33ebff] text-black shadow-lg shadow-[#00e5ff]/20'
-                    }`}
-                  >
-                    <Crosshair className="w-5 h-5" />
-                    <span>
-                      {detectedCode
-                        ? '📸 QR Detected — Tap to Check In!'
-                        : isCaptureArmed
-                        ? 'Align QR Pass Inside Box...'
-                        : '📸 Tap to Scan QR Pass'}
-                    </span>
-                  </button>
-                ) : (
-                  <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center text-xs text-amber-300 font-semibold flex items-center justify-center gap-2">
-                    <Zap className="w-3.5 h-3.5 text-amber-400 animate-bounce" />
-                    <span>Auto-Scanning Active: Point steadily at pass</span>
-                  </div>
-                )}
+                <button
+                  type="button"
+                  onClick={handleManualCaptureClick}
+                  className={`w-full py-3.5 px-4 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 transition-all ${
+                    detectedCode
+                      ? 'bg-emerald-400 hover:bg-emerald-300 text-black shadow-lg shadow-emerald-500/30 animate-pulse'
+                      : isCaptureArmed
+                      ? 'bg-amber-400 text-black shadow-lg shadow-amber-400/30'
+                      : 'bg-[#00e5ff] hover:bg-[#33ebff] text-black shadow-lg shadow-[#00e5ff]/20'
+                  }`}
+                >
+                  <Crosshair className="w-5 h-5" />
+                  <span>
+                    {detectedCode
+                      ? '📸 QR Detected — Tap to Check In!'
+                      : isCaptureArmed
+                      ? 'Align QR Pass Inside Box...'
+                      : '📸 Tap to Scan QR Pass'}
+                  </span>
+                </button>
 
                 <div className="flex items-center justify-between text-[11px] text-slate-400 px-1">
-                  <span>
-                    {scanMode === 'manual'
-                      ? 'Manual mode: Will ONLY scan when you tap'
-                      : 'Auto mode: Rescans are paused for same ticket'}
-                  </span>
+                  <span>Align pass in camera and tap button</span>
                   <button
                     type="button"
                     onClick={stopScanner}

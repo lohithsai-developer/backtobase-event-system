@@ -85,9 +85,30 @@ export const AttendanceTable: React.FC = () => {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleDownloadAllLinks = () => {
-    const apiBase = getApiBase();
-    window.open(`${apiBase}/tickets/links/${eventId}/export`, '_blank');
+  const handleDownloadAllLinks = async () => {
+    setIsExporting(true);
+    try {
+      const apiBase = getApiBase();
+      const token = localStorage.getItem('btb_token') || '';
+      const url = `${apiBase}/tickets/links/${eventId}/export`;
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Failed to download pass links');
+      const blob = await res.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `BacktoBase_Pass_Links_${eventId}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => window.URL.revokeObjectURL(downloadUrl), 1000);
+    } catch (err: any) {
+      alert('Download error: ' + (err.message || 'Could not download pass links.'));
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   useEffect(() => {

@@ -108,10 +108,30 @@ export const TicketsManagement: React.FC = () => {
     }
   };
 
-  // Download all pass links CSV
-  const handleDownloadAllLinks = () => {
-    const apiBase = getApiBase();
-    window.open(`${apiBase}/tickets/links/${eventId}/export`, '_blank');
+  // Download all pass links CSV via fetch & blob (mobile safe)
+  const handleDownloadAllLinks = async () => {
+    setActionMessage({ type: 'success', text: 'Preparing pass links download...' });
+    try {
+      const apiBase = getApiBase();
+      const token = localStorage.getItem('btb_token') || '';
+      const url = `${apiBase}/tickets/links/${eventId}/export`;
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Failed to download pass links');
+      const blob = await res.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `BacktoBase_Pass_Links_${eventId}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => window.URL.revokeObjectURL(downloadUrl), 1000);
+      setActionMessage({ type: 'success', text: 'Pass links CSV downloaded successfully!' });
+    } catch (err: any) {
+      setActionMessage({ type: 'error', text: 'Download failed: ' + (err.message || 'Error downloading links') });
+    }
   };
 
   // Toggle attendance status

@@ -32,12 +32,34 @@ export const TicketView: React.FC = () => {
 
   const handleDownloadQr = () => {
     if (!ticket?.qrCodeDataUrl) return;
-    const a = document.createElement('a');
-    a.href = ticket.qrCodeDataUrl;
-    a.download = `BacktoBase_Pass_${(ticket.participantName || 'attendee').replace(/\s+/g, '_')}.png`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    try {
+      const parts = ticket.qrCodeDataUrl.split(',');
+      const byteString = atob(parts[1]);
+      const mimeString = parts[0].split(':')[1].split(';')[0];
+      const ab = new ArrayBuffer(byteString.length);
+      const ia = new Uint8Array(ab);
+      for (let i = 0; i < byteString.length; i++) {
+        ia[i] = byteString.charCodeAt(i);
+      }
+      const blob = new Blob([ab], { type: mimeString });
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `BacktoBase_Pass_${(ticket.participantName || 'attendee').replace(/\s+/g, '_')}.png`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        a.remove();
+        window.URL.revokeObjectURL(blobUrl);
+      }, 500);
+    } catch (err) {
+      const a = document.createElement('a');
+      a.href = ticket.qrCodeDataUrl;
+      a.download = `BacktoBase_Pass_${(ticket.participantName || 'attendee').replace(/\s+/g, '_')}.png`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => a.remove(), 500);
+    }
   };
 
   if (loading) {

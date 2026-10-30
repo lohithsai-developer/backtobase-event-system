@@ -46,38 +46,40 @@ export const Navbar: React.FC = () => {
 
           <Link
             to="/volunteer/scanner"
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold text-white bg-[#171b26] border border-[#272d3f] hover:border-[#00e5ff] hover:text-[#00e5ff] transition-all"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-bold text-black bg-[#00e5ff] hover:bg-[#33ebff] shadow-md shadow-[#00e5ff]/20 transition-all active:scale-95"
           >
-            <QrCode className="w-4 h-4 text-[#00e5ff]" />
-            <span className="hidden sm:inline">Volunteer Scanner</span>
+            <QrCode className="w-4 h-4" />
+            <span className="hidden sm:inline">Launch Scanner</span>
             <span className="sm:hidden">Scanner</span>
           </Link>
 
           {isAuthenticated ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <Link
                 to="/admin/dashboard"
-                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold text-black bg-[#00e5ff] hover:bg-[#33ebff] transition-all shadow-md shadow-[#00e5ff]/20"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-bold text-black bg-[#e6be6d] hover:bg-[#eed08c] transition-all shadow-md shadow-[#e6be6d]/20 active:scale-95"
               >
                 <LayoutDashboard className="w-4 h-4" />
-                <span>Admin Panel</span>
+                <span className="hidden xs:inline">Admin Panel</span>
+                <span className="xs:hidden">Admin</span>
               </Link>
               <button
                 onClick={() => {
                   logout();
                   navigate('/');
                 }}
-                title="Log Out"
-                className="p-2 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/30 transition-all"
+                title="Log Out of Admin"
+                className="flex items-center gap-1 px-2.5 py-2 rounded-lg text-xs sm:text-sm font-bold text-rose-400 bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 transition-all active:scale-95"
               >
-                <LogOut className="w-5 h-5" />
+                <LogOut className="w-4 h-4" />
+                <span>Logout</span>
               </button>
             </div>
           ) : (
             <div className="flex items-center gap-2">
               <Link
                 to="/admin/login"
-                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold text-black bg-[#e6be6d] hover:bg-[#eed08c] transition-all shadow-md shadow-[#e6be6d]/20"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold text-black bg-[#e6be6d] hover:bg-[#eed08c] transition-all shadow-md shadow-[#e6be6d]/20 active:scale-95"
               >
                 <ShieldCheck className="w-4 h-4" />
                 <span>Admin Login</span>

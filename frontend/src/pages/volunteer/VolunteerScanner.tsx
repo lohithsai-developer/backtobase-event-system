@@ -446,12 +446,26 @@ export const VolunteerScanner: React.FC = () => {
             <span>Home</span>
           </Link>
           {isAuthenticated && (
-            <Link
-              to="/admin/dashboard"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-[#e6be6d] bg-[#e6be6d]/10 border border-[#e6be6d]/30 hover:bg-[#e6be6d]/20 transition-all"
-            >
-              <span>Admin</span>
-            </Link>
+            <>
+              <Link
+                to="/admin/dashboard"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-[#e6be6d] bg-[#e6be6d]/10 border border-[#e6be6d]/30 hover:bg-[#e6be6d]/20 transition-all"
+              >
+                <span>Admin</span>
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  logout();
+                  navigate('/');
+                }}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-rose-400 bg-rose-500/10 border border-rose-500/30 hover:bg-rose-500/20 transition-all"
+                title="Logout of Admin"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Logout</span>
+              </button>
+            </>
           )}
         </div>
       </header>

@@ -64,22 +64,6 @@ export const PublicDashboard: React.FC = () => {
             <p className="text-slate-400 text-sm sm:text-base leading-relaxed">
               Real-time QR ticket verification, gate access control, and live attendance metrics powered by high-speed cloud sync.
             </p>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center md:justify-start gap-3 pt-2">
-              <Link
-                to="/volunteer/scanner"
-                className="flex items-center justify-center gap-2.5 px-5 py-3.5 rounded-xl font-bold text-sm bg-gradient-to-r from-[#00e5ff] to-[#00b4d8] text-black hover:opacity-95 shadow-lg shadow-[#00e5ff]/25 active:scale-95 transition-all"
-              >
-                <QrCode className="w-5 h-5 shrink-0" />
-                <span>Launch QR Scanner</span>
-              </Link>
-              <Link
-                to="/admin/login"
-                className="flex items-center justify-center gap-2.5 px-5 py-3.5 rounded-xl font-bold text-sm bg-[#171b26] text-white border border-[#272d3f] hover:border-[#e6be6d] hover:text-[#e6be6d] active:scale-95 transition-all"
-              >
-                <ShieldCheck className="w-5 h-5 shrink-0 text-[#e6be6d]" />
-                <span>Admin Login</span>
-              </Link>
-            </div>
           </div>
 
           <div className="shrink-0 flex flex-col items-center p-4 sm:p-6 bg-[#11141c]/90 rounded-2xl border border-[#272d3f] shadow-inner text-center">

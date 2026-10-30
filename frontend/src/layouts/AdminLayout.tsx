@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { Outlet, Navigate, useParams, Link } from 'react-router-dom';
+import { Outlet, Navigate, useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Sidebar } from '../components/Sidebar';
 import { BottomNav } from '../components/BottomNav';
-import { Menu, QrCode } from 'lucide-react';
+import { Menu, QrCode, LogOut } from 'lucide-react';
 
 export const AdminLayout: React.FC = () => {
-  const { user, isAuthenticated, loading } = useAuth();
+  const { user, isAuthenticated, loading, logout } = useAuth();
   const { eventId } = useParams();
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   if (loading) {
@@ -29,23 +30,36 @@ export const AdminLayout: React.FC = () => {
     <div className="flex flex-col md:flex-row min-h-screen bg-[#08090c] text-white">
       {/* Top Mobile Bar */}
       <div className="md:hidden sticky top-0 z-40 bg-[#11141c]/95 backdrop-blur-md border-b border-[#272d3f] px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <button
             onClick={() => setMobileMenuOpen(true)}
             className="p-2 rounded-xl bg-[#171b26] border border-[#272d3f] text-slate-300 hover:text-white"
+            title="Open Menu"
           >
             <Menu className="w-5 h-5" />
           </button>
-          <img src="/backtobase-logo.png" alt="BacktoBase" className="h-9 w-auto object-contain" />
+          <img src="/backtobase-logo.png" alt="BacktoBase" className="h-8 w-auto object-contain" />
         </div>
         <div className="flex items-center gap-2">
           <Link
             to="/volunteer/scanner"
-            className="p-2 rounded-xl bg-[#00e5ff]/15 text-[#00e5ff] border border-[#00e5ff]/30"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#00e5ff]/15 text-[#00e5ff] border border-[#00e5ff]/30 text-xs font-bold"
             title="Open Scanner"
           >
             <QrCode className="w-4 h-4" />
+            <span className="hidden xs:inline">Scanner</span>
           </Link>
+          <button
+            onClick={() => {
+              logout();
+              navigate('/admin/login');
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/15 text-rose-400 hover:bg-rose-500/25 border border-rose-500/30 text-xs font-bold transition-all active:scale-95"
+            title="Log Out of Admin Console"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Logout</span>
+          </button>
         </div>
       </div>
 

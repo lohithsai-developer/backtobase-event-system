@@ -58,3 +58,154 @@
 .animate-scaleUp {
   animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* ==========================================================================
+   Light Theme Specifications (Home Portal & Admin Console)
+   ========================================================================== */
+html.light-theme body {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+html.light-theme ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+html.light-theme ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+
+html.light-theme ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Background overrides */
+html.light-theme .bg-\[\#08090c\],
+html.light-theme .bg-\[\#0d0f15\],
+html.light-theme .bg-\[\#0e1017\],
+html.light-theme .bg-\[\#0e1118\],
+html.light-theme .bg-\[\#0e1118\]\/95 {
+  background-color: #f8fafc !important;
+}
+
+html.light-theme .bg-\[\#11141c\],
+html.light-theme .bg-\[\#11141c\]\/90,
+html.light-theme .bg-\[\#11141c\]\/95 {
+  background-color: #ffffff !important;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+}
+
+html.light-theme header,
+html.light-theme nav {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light-theme .bg-\[\#171b26\],
+html.light-theme .bg-\[\#171b26\]\/50,
+html.light-theme .bg-\[\#171b26\]\/90 {
+  background-color: #f1f5f9 !important;
+}
+
+html.light-theme .bg-\[\#1f2433\] {
+  background-color: #e2e8f0 !important;
+}
+
+html.light-theme .bg-\[\#11141c\]\/90 {
+  background-color: #ffffff !important;
+}
+
+/* Hero card light gradient */
+html.light-theme .bg-gradient-to-br.from-\[\#11141c\] {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #f1f5f9 100%) !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.05) !important;
+}
+
+/* Border overrides */
+html.light-theme .border-\[\#272d3f\],
+html.light-theme .border-\[\#222838\],
+html.light-theme .border-\[\#272d3f\]\/60,
+html.light-theme .border-\[\#272d3f\]\/40,
+html.light-theme .border-\[\#272d3f\]\/30,
+html.light-theme .border-\[\#272d3f\]\/20 {
+  border-color: #e2e8f0 !important;
+}
+
+html.light-theme .divide-\[\#272d3f\]\/60 > :not([hidden]) ~ :not([hidden]),
+html.light-theme .divide-\[\#272d3f\] > :not([hidden]) ~ :not([hidden]) {
+  border-color: #e2e8f0 !important;
+}
+
+/* Text overrides */
+html.light-theme .text-white {
+  color: #0f172a !important;
+}
+
+html.light-theme .text-slate-200 {
+  color: #1e293b !important;
+}
+
+html.light-theme .text-slate-300 {
+  color: #334155 !important;
+}
+
+html.light-theme .text-slate-400 {
+  color: #64748b !important;
+}
+
+html.light-theme .text-slate-500 {
+  color: #64748b !important;
+}
+
+/* High-contrast brand accents on light background */
+html.light-theme .text-\[\#00e5ff\] {
+  color: #0284c7 !important;
+}
+
+html.light-theme .text-\[\#e6be6d\] {
+  color: #b45309 !important;
+}
+
+/* Form controls in light theme */
+html.light-theme input:not([type="checkbox"]):not([type="radio"]),
+html.light-theme select,
+html.light-theme textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light-theme input::placeholder,
+html.light-theme textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Table light theme refinements */
+html.light-theme thead {
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+}
+
+html.light-theme tbody tr:hover {
+  background-color: #f8fafc !important;
+}
+
+/* Modal light theme card */
+html.light-theme .bg-\[\#171b26\].rounded-2xl.max-w-lg,
+html.light-theme .bg-\[\#11141c\].border.rounded-3xl {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1) !important;
+}
+
+/* Sidebar & Drawer overrides */
+html.light-theme aside .bg-\[\#11141c\] {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light-theme .md\:hidden.fixed.bottom-0 {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-color: #e2e8f0 !important;
+}

@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { Outlet, Navigate, useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { Sidebar } from '../components/Sidebar';
 import { BottomNav } from '../components/BottomNav';
-import { Menu, QrCode, LogOut } from 'lucide-react';
+import { Menu, QrCode, LogOut, Sun, Moon } from 'lucide-react';
 
 export const AdminLayout: React.FC = () => {
   const { user, isAuthenticated, loading, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const { eventId } = useParams();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -40,7 +42,20 @@ export const AdminLayout: React.FC = () => {
           </button>
           <img src="/backtobase-logo.png" alt="BacktoBase" className="h-8 w-auto object-contain" />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Light / Dark Theme Toggle Button */}
+          <button
+            onClick={toggleTheme}
+            title={theme === 'light' ? 'Switch to Dark Theme' : 'Switch to Light Theme'}
+            className="p-2 rounded-xl bg-[#171b26] border border-[#272d3f] text-slate-300 hover:text-white active:scale-95 transition-all"
+            aria-label="Toggle Theme"
+          >
+            {theme === 'light' ? (
+              <Moon className="w-4 h-4 text-amber-500 fill-amber-500/20" />
+            ) : (
+              <Sun className="w-4 h-4 text-amber-400 fill-amber-400/20" />
+            )}
+          </button>
           <Link
             to="/volunteer/scanner"
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#00e5ff]/15 text-[#00e5ff] border border-[#00e5ff]/30 text-xs font-bold"

@@ -14,6 +14,9 @@ export const TicketView: React.FC = () => {
   useEffect(() => {
     document.title = 'Participant Gate Pass — BacktoBase';
 
+    // Ensure ticket page strictly stays in high-contrast dark pass mode
+    document.documentElement.classList.remove('light-theme');
+
     // Detach manifest link so mobile Chrome will NOT consider this page an installable staff app
     const manifestTag = document.querySelector('link[rel="manifest"]');
     const originalHref = manifestTag?.getAttribute('href') || '/manifest.json';
@@ -33,6 +36,12 @@ export const TicketView: React.FC = () => {
         manifestTag.setAttribute('href', originalHref);
       }
       window.removeEventListener('beforeinstallprompt', suppressInstall, { capture: true });
+
+      // Restore user theme preference if light theme was enabled
+      const savedTheme = localStorage.getItem('btb_theme');
+      if (savedTheme === 'light') {
+        document.documentElement.classList.add('light-theme');
+      }
     };
   }, []);
 

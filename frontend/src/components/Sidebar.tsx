@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import {
   LayoutDashboard,
   Calendar,
@@ -12,6 +13,8 @@ import {
   History,
   ExternalLink,
   X,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -26,6 +29,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onMobileClose,
 }) => {
   const { logout, user } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -150,7 +154,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      {/* User Footer and Logout */}
+      {/* User Footer, Theme Toggle and Logout */}
       <div className="p-4 border-t border-[#272d3f] bg-[#0d0f15]">
         <div className="flex items-center justify-between mb-3 px-2">
           <div>
@@ -159,6 +163,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
               {user?.role || 'Administrator'}
             </div>
           </div>
+          {/* Light / Dark Theme Button */}
+          <button
+            onClick={toggleTheme}
+            title={theme === 'light' ? 'Switch to Dark Theme' : 'Switch to Light Theme'}
+            className="p-1.5 rounded-lg bg-[#171b26] border border-[#272d3f] text-slate-300 hover:text-white transition-all active:scale-95"
+            aria-label="Toggle Theme"
+          >
+            {theme === 'light' ? (
+              <Moon className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20" />
+            ) : (
+              <Sun className="w-3.5 h-3.5 text-amber-400 fill-amber-400/20" />
+            )}
+          </button>
         </div>
         <button
           onClick={() => {

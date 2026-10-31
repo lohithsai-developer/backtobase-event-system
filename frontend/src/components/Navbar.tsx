@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ShieldCheck, QrCode, LogOut, LayoutDashboard, Server } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
+import { ShieldCheck, QrCode, LogOut, LayoutDashboard, Server, Sun, Moon } from 'lucide-react';
 import { BackendConfigModal } from './BackendConfigModal';
 import { getApiBase } from '../services/api';
 
 export const Navbar: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [configModalOpen, setConfigModalOpen] = useState(false);
   const currentApi = getApiBase();
@@ -42,6 +44,20 @@ export const Navbar: React.FC = () => {
             <span className={`w-2 h-2 rounded-full ${isCloudConnected ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
             <Server className="w-3.5 h-3.5" />
             <span className="hidden md:inline">{isCloudConnected ? 'Cloud API' : 'Server Settings'}</span>
+          </button>
+
+          {/* Light / Dark Theme Toggle Button */}
+          <button
+            onClick={toggleTheme}
+            title={theme === 'light' ? 'Switch to Dark Theme' : 'Switch to Light Theme'}
+            className="flex items-center justify-center p-2 rounded-lg text-slate-300 hover:text-white bg-[#171b26] border border-[#272d3f] hover:border-[#00e5ff] transition-all active:scale-95 shadow-sm"
+            aria-label="Toggle Theme"
+          >
+            {theme === 'light' ? (
+              <Moon className="w-4 h-4 text-amber-500 fill-amber-500/20" />
+            ) : (
+              <Sun className="w-4 h-4 text-amber-400 fill-amber-400/20" />
+            )}
           </button>
 
           <Link

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Html5Qrcode } from 'html5-qrcode';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { apiRequest } from '../../services/api';
 import {
   CheckCircle2,
@@ -25,6 +26,8 @@ import {
   Square,
   Crosshair,
   Undo2,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { Badge } from '../../components/Badge';
 import { BackendConfigModal } from '../../components/BackendConfigModal';
@@ -32,6 +35,7 @@ import { BottomNav } from '../../components/BottomNav';
 
 export const VolunteerScanner: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const [activeEvent, setActiveEvent] = useState<any>(null);
@@ -439,6 +443,19 @@ export const VolunteerScanner: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Light / Dark Theme Button */}
+          <button
+            onClick={toggleTheme}
+            title={theme === 'light' ? 'Switch to Dark Theme' : 'Switch to Light Theme'}
+            className="p-1.5 rounded-lg bg-[#171b26] border border-[#272d3f] text-slate-300 hover:text-white transition-all active:scale-95"
+            aria-label="Toggle Theme"
+          >
+            {theme === 'light' ? (
+              <Moon className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20" />
+            ) : (
+              <Sun className="w-3.5 h-3.5 text-amber-400 fill-amber-400/20" />
+            )}
+          </button>
           <Link
             to="/"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 bg-[#171b26] border border-[#272d3f] hover:text-[#00e5ff] hover:border-[#00e5ff] transition-all"

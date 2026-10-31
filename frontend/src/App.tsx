@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { PublicLayout } from './layouts/PublicLayout';
 import { AdminLayout } from './layouts/AdminLayout';
 
@@ -26,9 +27,10 @@ import { InstallPrompt } from './components/InstallPrompt';
 
 export const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
           {/* Public Portal Route */}
           <Route element={<PublicLayout />}>
             <Route path="/" element={<PublicDashboard />} />
@@ -66,6 +68,7 @@ export const App: React.FC = () => {
         <InstallPrompt />
       </BrowserRouter>
     </AuthProvider>
+  </ThemeProvider>
   );
 };
 

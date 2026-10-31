@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { apiRequest, getApiBase, setCustomApiBase } from '../../services/api';
-import { ShieldCheck, Lock, User, AlertCircle, ArrowLeft, Server, Check, Eye, EyeOff } from 'lucide-react';
+import { ShieldCheck, Lock, User, AlertCircle, ArrowLeft, Server, Check, Eye, EyeOff, Sun, Moon } from 'lucide-react';
 import { BottomNav } from '../../components/BottomNav';
 
 export const AdminLogin: React.FC = () => {
+  const { theme, toggleTheme } = useTheme();
   const [username, setUsername] = useState('-admin');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -60,8 +62,8 @@ export const AdminLogin: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#08090c] flex flex-col justify-center items-center px-4 py-12">
-      {/* Return link */}
-      <div className="w-full max-w-md mb-6">
+      {/* Top Header / Return link & Theme Toggle */}
+      <div className="w-full max-w-md mb-6 flex items-center justify-between">
         <Link
           to="/"
           className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-[#00e5ff] transition-colors"
@@ -69,6 +71,19 @@ export const AdminLogin: React.FC = () => {
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Main Portal</span>
         </Link>
+        <button
+          type="button"
+          onClick={toggleTheme}
+          title={theme === 'light' ? 'Switch to Dark Theme' : 'Switch to Light Theme'}
+          className="p-2 rounded-xl bg-[#171b26] border border-[#272d3f] text-slate-300 hover:text-white transition-all active:scale-95 shadow-sm"
+          aria-label="Toggle Theme"
+        >
+          {theme === 'light' ? (
+            <Moon className="w-4 h-4 text-amber-500 fill-amber-500/20" />
+          ) : (
+            <Sun className="w-4 h-4 text-amber-400 fill-amber-400/20" />
+          )}
+        </button>
       </div>
 
       <div className="w-full max-w-md bg-[#11141c] border border-[#272d3f] rounded-3xl p-8 shadow-2xl relative overflow-hidden">
